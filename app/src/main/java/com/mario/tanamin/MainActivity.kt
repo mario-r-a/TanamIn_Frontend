@@ -11,8 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.mario.tanamin.ui.route.TanamInAppRoute
 import com.mario.tanamin.ui.theme.TanaminTheme
-import com.mario.tanamin.ui.view.WalletView
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
 //                        modifier = Modifier.padding(innerPadding)
 //                    )
 //                }
-                WalletView()
+                TanamInAppRoute()
             }
         }
     }
