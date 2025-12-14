@@ -21,7 +21,6 @@ class WalletViewModel(
 ) : ViewModel() {
 
     private val _pockets = MutableStateFlow<List<PocketModel>>(emptyList())
-    val pockets: StateFlow<List<PocketModel>> = _pockets.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -38,6 +37,26 @@ class WalletViewModel(
             }.sumOf { it.total }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    // New: derived StateFlow containing only active pockets with walletType == "Main"
+    val activeMainPockets: StateFlow<List<PocketModel>> = _pockets
+        .map { list ->
+            list.filter { p ->
+                val wt = p.walletType.trim()
+                p.isActive && wt.equals("Main", ignoreCase = true)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // New: derived StateFlow containing pockets with walletType == "Investment" (case-insensitive).
+    val investmentPockets: StateFlow<List<PocketModel>> = _pockets
+        .map { list ->
+            list.filter { p ->
+                val wt = p.walletType.trim()
+                wt.equals("Investment", ignoreCase = true)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Load pockets for a given user id (preferred: explicit). */
     fun loadPocketsFor(userId: Int) {
