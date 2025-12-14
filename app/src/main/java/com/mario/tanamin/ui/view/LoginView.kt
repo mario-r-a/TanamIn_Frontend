@@ -5,12 +5,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.mario.tanamin.data.session.SessionManager
 import com.mario.tanamin.ui.route.AppView
-import com.mario.tanamin.ui.route.TanamInAppRoute
 import com.mario.tanamin.ui.viewmodel.LoginUiState
 import com.mario.tanamin.ui.viewmodel.LoginViewModel
 
@@ -22,6 +23,7 @@ fun LoginView(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val loginState by loginViewModel.loginState.collectAsState()
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -65,8 +67,12 @@ fun LoginView(
                     color = MaterialTheme.colorScheme.error
                 )
                 is LoginUiState.Success -> {
-                    // Navigate to Home on success
-                    LaunchedEffect(Unit) {
+                    // Save session to DataStore and navigate to Home on success
+                    LaunchedEffect(loginState) {
+                        val response = (loginState as LoginUiState.Success).response
+                        val sessionManager = SessionManager(context)
+                        sessionManager.saveSession(response.data.id.toString(), response.data.token)
+
                         navController.navigate(AppView.Home.name) {
                             popUpTo(AppView.Login.name) { inclusive = true }
                         }
