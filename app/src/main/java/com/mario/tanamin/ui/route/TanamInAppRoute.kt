@@ -2,6 +2,9 @@ package com.mario.tanamin.ui.route
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,16 +36,20 @@ fun TanamInAppRoute() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val topBarTitle = when (currentRoute) {
-        AppView.Login.name -> AppView.Login.title
-        AppView.Home.name -> AppView.Home.title
-        AppView.Wallet.name -> AppView.Wallet.title
-        else -> "TanamIn"
-    }
-
     Scaffold(
-        topBar = {
-            MyTopAppBar(title = topBarTitle)
+        bottomBar = {
+            FloatingBottomBar(
+                currentRoute = currentRoute,
+                onNavigate = { route ->
+                    if (route != null && route != currentRoute) {
+                        navController.navigate(route) {
+                            popUpTo(AppView.Login.name) { inclusive = false }
+                            launchSingleTop = true
+                            restoreState = false
+                        }
+                    }
+                }
+            )
         }
     ) { innerPadding ->
         Box(
@@ -96,4 +103,61 @@ fun MyTopAppBar(
         ),
         modifier = modifier
     )
+}
+
+@Composable
+fun FloatingBottomBar(
+    currentRoute: String?,
+    onNavigate: (String?) -> Unit
+) {
+    val items = listOf(
+        Triple(AppView.Home.name, "Home", Icons.Default.Home),
+        Triple(AppView.Wallet.name, "Wallet", Icons.Default.AccountBalanceWallet)
+    )
+    // Only show on Home/Wallet, not Login
+    if (currentRoute == AppView.Login.name) return
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 16.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Surface(
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp,
+            shape = MaterialTheme.shapes.large,
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEach { (route, label, icon) ->
+                    NavigationBarItem(
+                        selected = currentRoute == route,
+                        onClick = { onNavigate(route) },
+                        icon = {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                tint = if (currentRoute == route) Color(0xFFFF9800) else Color(0xFFBDBDBD)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = label,
+                                color = if (currentRoute == route) Color(0xFFFF9800) else Color(0xFFBDBDBD),
+                                fontSize = 12.sp
+                            )
+                        },
+                        alwaysShowLabel = true
+                    )
+                }
+            }
+        }
+    }
 }
