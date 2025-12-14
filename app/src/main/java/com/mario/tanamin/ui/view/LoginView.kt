@@ -6,7 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email // <-- Import icon Email
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -16,11 +16,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType // <-- Import KeyboardType
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -38,14 +38,12 @@ fun LoginView(
     navController: NavController,
     loginViewModel: LoginViewModel = viewModel()
 ) {
-    // --- PERUBAHAN 1: Ganti nama variabel dari username menjadi email ---
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val loginState by loginViewModel.loginState.collectAsState()
     val context = LocalContext.current
 
-    // --- DESIGN VARIABLES ---
     val topGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFFFFB86C), Color(0xFFFFE3A3), Color.White),
         startY = 0f,
@@ -57,7 +55,6 @@ fun LoginView(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // 1. Background Gradient & Decoration
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -65,14 +62,12 @@ fun LoginView(
                 .background(topGradient)
                 .align(Alignment.TopCenter)
         ) {
-            // Decorative Circle 1
             Box(
                 modifier = Modifier
                     .offset(x = (-40).dp, y = (-40).dp)
                     .size(180.dp)
                     .background(Color.White.copy(alpha = 0.2f), CircleShape)
             )
-            // Decorative Circle 2
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -90,7 +85,6 @@ fun LoginView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Header
             Text(
                 text = "Welcome Back!",
                 fontSize = 32.sp,
@@ -103,17 +97,13 @@ fun LoginView(
                 fontSize = 16.sp,
                 color = Color(0xFF222B45).copy(alpha = 0.7f)
             )
-
             Spacer(modifier = Modifier.height(40.dp))
-
-            // --- PERUBAHAN 2: Ganti seluruh blok OutlinedTextField ini ---
-            // Email Input
             OutlinedTextField(
-                value = email, // Gunakan variabel email
+                value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") }, // Ganti label menjadi Email
+                label = { Text("Email") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), // Keyboard email
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -125,14 +115,10 @@ fun LoginView(
                     unfocusedContainerColor = Color.White
                 ),
                 leadingIcon = {
-                    // Ganti icon menjadi Email
                     Icon(imageVector = Icons.Default.Email, contentDescription = null, tint = Color.Gray)
                 }
             )
-
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Password Input (Tidak ada perubahan di sini)
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -160,13 +146,9 @@ fun LoginView(
                     }
                 }
             )
-
             Spacer(modifier = Modifier.height(32.dp))
-
-            // --- PERUBAHAN 3: Gunakan variabel email di sini ---
-            // Login Button
             Button(
-                onClick = { loginViewModel.login(email, password) }, // Ganti username -> email
+                onClick = { loginViewModel.login(email, password) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -192,10 +174,7 @@ fun LoginView(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Error Message Display (Tidak ada perubahan di sini)
             if (loginState is LoginUiState.Error) {
                 Box(
                     modifier = Modifier
@@ -213,9 +192,12 @@ fun LoginView(
                 }
             }
 
-            // Success Navigation Logic (Tidak ada perubahan di sini)
             if (loginState is LoginUiState.Success) {
-                LaunchedEffect(Unit) {
+                LaunchedEffect(loginState) {
+                    val response = (loginState as LoginUiState.Success).response
+                    val sessionManager = SessionManager(context)
+                    sessionManager.saveSession(response.data.id.toString(), response.data.token)
+
                     navController.navigate(AppView.Home.name) {
                         popUpTo(AppView.Login.name) { inclusive = true }
                     }
