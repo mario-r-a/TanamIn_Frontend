@@ -8,6 +8,7 @@ import com.mario.tanamin.data.repository.TanamInRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 sealed class LoginUiState {
     object Idle : LoginUiState()
@@ -25,11 +26,29 @@ class LoginViewModel : ViewModel() {
     fun login(username: String, password: String) {
         _loginState.value = LoginUiState.Loading
         viewModelScope.launch {
-            val result = repository.login(username, password)
-            result.onSuccess { response ->
+            try {
+                val response = repository.login(username, password).getOrThrow()
                 _loginState.value = LoginUiState.Success(response)
-            }.onFailure { exception ->
-                _loginState.value = LoginUiState.Error(exception.message ?: "Unknown error")
+
+            } catch (e: Exception) {
+                // --- INI SOLUSINYA: Periksa isi pesan dari Exception ---
+
+                val errorMessage = e.message ?: "Terjadi kesalahan tidak diketahui"
+                var customMessage = errorMessage // Default message
+
+                // Cek apakah pesan error mengandung "HTTP 400"
+                if (errorMessage.contains("HTTP 400")) {
+                    customMessage = "Email atau password tidak valid.\nSilakan periksa kembali."
+                }
+                // Anda bisa menambahkan pengecekan lain jika perlu
+                // else if (errorMessage.contains("HTTP 500")) {
+                //     customMessage = "Terjadi masalah pada server. Coba lagi nanti."
+                // }
+                // else if (errorMessage.contains("HTTP 401")) {
+                //     customMessage = "Anda tidak memiliki akses."
+                // }
+
+                _loginState.value = LoginUiState.Error(customMessage)
             }
         }
     }
