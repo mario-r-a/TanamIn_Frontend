@@ -6,6 +6,7 @@ import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
 import com.mario.tanamin.data.service.TanamInService
+import com.mario.tanamin.ui.model.PocketModel
 import retrofit2.Response
 
 class TanamInRepository(private val tanamInService: TanamInService) {
@@ -30,7 +31,7 @@ class TanamInRepository(private val tanamInService: TanamInService) {
         }
     }
 
-    suspend fun getPocketsByUser(userId: Int): Result<List<DataPocket>> {
+    suspend fun getPocketsByUser(userId: Int): Result<List<PocketModel>> {
         return try {
             val response: Response<PocketResponse> = tanamInService.getPocketsByUser(userId)
             if (!response.isSuccessful) {
@@ -42,12 +43,28 @@ class TanamInRepository(private val tanamInService: TanamInService) {
                 Log.d("TanamInRepository", "getPocketsByUser empty body")
                 return Result.failure(Exception("Empty response body"))
             }
-            val pockets = body.`data`
-            Log.d("TanamInRepository", "getPocketsByUser received ${pockets.size} pockets for userId=$userId")
-            pockets.forEach { p ->
-                Log.d("TanamInRepository", "pocket: id=${p.id} name=${p.name} isActive=${p.isActive} walletType=${p.walletType} total=${p.total}")
+            val pocketsDto: List<DataPocket> = body.`data`
+            Log.d("TanamInRepository", "getPocketsByUser received ${pocketsDto.size} pockets for userId=$userId")
+            pocketsDto.forEach { p ->
+                Log.d("TanamInRepository", "pocket dto: id=${p.id} name=${p.name} isActive=${p.isActive} walletType=${p.walletType} total=${p.total}")
             }
-            Result.success(pockets)
+
+            // Map DTO -> UI model
+            val pocketModels = pocketsDto.map { dto ->
+                PocketModel(
+                    id = dto.id,
+                    name = dto.name,
+                    total = dto.total.toLong(),
+                    isActive = dto.isActive,
+                    walletType = dto.walletType
+                )
+            }
+
+            pocketModels.forEach { p ->
+                Log.d("TanamInRepository", "pocket model: id=${p.id} name=${p.name} isActive=${p.isActive} walletType=${p.walletType} total=${p.total}")
+            }
+
+            Result.success(pocketModels)
         } catch (e: Exception) {
             Log.e("TanamInRepository", "getPocketsByUser exception", e)
             return Result.failure(e)

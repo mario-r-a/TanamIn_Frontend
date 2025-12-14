@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mario.tanamin.data.container.TanamInContainer
-import com.mario.tanamin.data.dto.DataPocket
 import com.mario.tanamin.data.repository.TanamInRepository
 import com.mario.tanamin.data.session.InMemorySessionHolder
+import com.mario.tanamin.ui.model.PocketModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -20,8 +20,8 @@ class WalletViewModel(
     private val repository: TanamInRepository = TanamInContainer().tanamInRepository
 ) : ViewModel() {
 
-    private val _pockets = MutableStateFlow<List<DataPocket>>(emptyList())
-    val pockets: StateFlow<List<DataPocket>> = _pockets.asStateFlow()
+    private val _pockets = MutableStateFlow<List<PocketModel>>(emptyList())
+    val pockets: StateFlow<List<PocketModel>> = _pockets.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -33,9 +33,9 @@ class WalletViewModel(
     val mainTotalFlow: StateFlow<Long> = _pockets
         .map { list ->
             list.filter { p ->
-                val wt = (p.walletType ?: "").trim()
+                val wt = p.walletType.trim()
                 p.isActive && wt.equals("Main", ignoreCase = true)
-            }.sumOf { it.total.toLong() }
+            }.sumOf { it.total }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
@@ -50,9 +50,9 @@ class WalletViewModel(
                         _pockets.value = list
                         // Log derived total for debug
                         val total = list.filter { p ->
-                            val wt = (p.walletType ?: "").trim()
+                            val wt = p.walletType.trim()
                             p.isActive && wt.equals("Main", ignoreCase = true)
-                        }.sumOf { it.total.toLong() }
+                        }.sumOf { it.total }
                         Log.d("WalletViewModel", "Loaded ${list.size} pockets; main active total=$total")
                     }
                     .onFailure { ex ->
