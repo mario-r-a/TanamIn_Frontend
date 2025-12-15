@@ -31,8 +31,6 @@ class LoginViewModel : ViewModel() {
                 _loginState.value = LoginUiState.Success(response)
 
             } catch (e: Exception) {
-                // --- INI SOLUSINYA: Periksa isi pesan dari Exception ---
-
                 val errorMessage = e.message ?: "Terjadi kesalahan tidak diketahui"
                 var customMessage = errorMessage // Default message
 
@@ -40,13 +38,6 @@ class LoginViewModel : ViewModel() {
                 if (errorMessage.contains("HTTP 400")) {
                     customMessage = "Email atau password tidak valid.\nSilakan periksa kembali."
                 }
-                // Anda bisa menambahkan pengecekan lain jika perlu
-                // else if (errorMessage.contains("HTTP 500")) {
-                //     customMessage = "Terjadi masalah pada server. Coba lagi nanti."
-                // }
-                // else if (errorMessage.contains("HTTP 401")) {
-                //     customMessage = "Anda tidak memiliki akses."
-                // }
 
                 _loginState.value = LoginUiState.Error(customMessage)
             }
