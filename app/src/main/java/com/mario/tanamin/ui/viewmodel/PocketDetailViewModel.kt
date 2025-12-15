@@ -207,28 +207,8 @@ class PocketDetailViewModel(
         }
     }
 
-    /**
-     * Transfer money from the current pocket to a target pocket (with validation and optimistic update).
-     * Delegates to suspend implementation.
-     */
-    fun moveMoney(toPocketId: Int, amount: Long) {
-        viewModelScope.launch {
-            transferMoneySuspend(toPocketId, amount)
-        }
-    }
-
-
-    /**
-     * Public wrapper kept for compatibility with view calls (PocketDetailView) — delegates to moveMoney.
-     * This ensures callers that use `transferMoney(...)` benefit from the same validation (balance, target availability).
-     */
-    fun transferMoney(toPocketId: Int, amount: Long) {
-        // Reuse existing validation inside moveMoney; simply delegate.
-        moveMoney(toPocketId, amount)
-    }
-
     fun loadTransactions(pocketId: Int) {
-        // Will be implemented when transaction endpoints are ready
+
     }
 
     fun clear() {
