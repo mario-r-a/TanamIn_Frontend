@@ -1,9 +1,11 @@
 package com.mario.tanamin.data.service
 
+import com.mario.tanamin.data.dto.DataPocketUpdate
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
 import com.mario.tanamin.data.dto.ProfileResponse
+import com.mario.tanamin.data.dto.UpdatePocketResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -27,6 +29,7 @@ interface TanamInService {
         @Path("pocketId") pocketId: Int,
         @Body update: DataPocketUpdate
     ): Response<UpdatePocketResponse>
+    
     @GET("api/profile")
     suspend fun getProfile(): Response<ProfileResponse>
 }

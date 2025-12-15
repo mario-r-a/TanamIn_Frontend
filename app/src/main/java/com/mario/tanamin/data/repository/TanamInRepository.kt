@@ -6,6 +6,7 @@ import com.mario.tanamin.data.dto.DataPocketUpdate
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
+import com.mario.tanamin.data.dto.UpdatePocketResponse
 import com.mario.tanamin.data.service.TanamInService
 import com.mario.tanamin.ui.model.PocketModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -82,13 +83,9 @@ class TanamInRepository(private val tanamInService: TanamInService) {
     // New: updatePocket uses PATCH api/pockets/{pocketId} to update a pocket and returns the updated PocketModel
     suspend fun updatePocket(update: DataPocketUpdate): Result<PocketModel> {
         return try {
-            val response = tanamInService.updatePocket(update.id, update)
+            val response: Response<UpdatePocketResponse> = tanamInService.updatePocket(update.id, update)
             if (!response.isSuccessful) {
                 Log.d("TanamInRepository", "updatePocket HTTP ${response.code()}: ${response.message()}")
-    suspend fun getProfile(): Result<com.mario.tanamin.data.dto.DataProfile> {
-        return try {
-            val response: Response<com.mario.tanamin.data.dto.ProfileResponse> = tanamInService.getProfile()
-            if (!response.isSuccessful) {
                 return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
             val body = response.body()
@@ -114,6 +111,18 @@ class TanamInRepository(private val tanamInService: TanamInService) {
             Result.success(pocketModel)
         } catch (e: Exception) {
             Log.e("TanamInRepository", "updatePocket exception", e)
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun getProfile(): Result<com.mario.tanamin.data.dto.DataProfile> {
+        return try {
+            val response: Response<com.mario.tanamin.data.dto.ProfileResponse> = tanamInService.getProfile()
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
                 return Result.failure(Exception("Empty response body"))
             }
             Result.success(body.`data`)
