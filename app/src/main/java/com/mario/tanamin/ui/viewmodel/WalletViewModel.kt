@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mario.tanamin.data.container.TanamInContainer
+import com.mario.tanamin.data.dto.DataPocketUpdate
 import com.mario.tanamin.data.repository.TanamInRepository
 import com.mario.tanamin.data.session.InMemorySessionHolder
 import com.mario.tanamin.ui.model.PocketModel
@@ -29,6 +30,14 @@ class WalletViewModel(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    // Profile budgeting percentage from backend
+    private val _budgetingPercentage = MutableStateFlow<Int?>(null)
+    val budgetingPercentage: StateFlow<Int?> = _budgetingPercentage.asStateFlow()
+
+    // Message flow for one-shot messages (success/error)
+    private val _messageFlow = MutableSharedFlow<String>()
+    val messageFlow: SharedFlow<String> = _messageFlow.asSharedFlow()
 
     // UI screen selection for the Wallet view
     enum class WalletScreen { Main, Investment }
@@ -139,5 +148,123 @@ class WalletViewModel(
         _pockets.value = emptyList()
         _error.value = null
         _isLoading.value = false
+    }
+
+    /** Load user profile to get budgeting percentage */
+    fun loadProfile() {
+        viewModelScope.launch {
+            try {
+                repository.getProfile()
+                    .onSuccess { profile ->
+                        _budgetingPercentage.value = profile.budgetingPercentage
+                        Log.d("WalletViewModel", "Loaded profile budgetingPercentage=${profile.budgetingPercentage}")
+                    }
+                    .onFailure { ex ->
+                        Log.e("WalletViewModel", "Failed to load profile: ${ex.message}")
+                        _messageFlow.emit("Failed to load budgeting percentage")
+                    }
+            } catch (e: Exception) {
+                Log.e("WalletViewModel", "Exception loading profile", e)
+                _messageFlow.emit("Failed to load profile")
+            }
+        }
+    }
+
+    /**
+     * Add balance with budgeting split:
+     * - budgetPercentage% goes to first active Main pocket
+     * - (100-budgetPercentage)% goes to Inactive Investments pocket
+     */
+    suspend fun addBalance(amount: Long, budgetPercentage: Int): Boolean {
+        if (amount <= 0) {
+            _messageFlow.emit("Amount must be greater than zero")
+            return false
+        }
+        if (budgetPercentage < 0 || budgetPercentage > 100) {
+            _messageFlow.emit("Budget percentage must be between 0 and 100")
+            return false
+        }
+
+        _isLoading.value = true
+        try {
+            val userId = InMemorySessionHolder.userId?.toIntOrNull()
+            if (userId == null) {
+                _messageFlow.emit("User not logged in")
+                return false
+            }
+
+            val currentPockets = _pockets.value
+
+            // Find first active Main pocket
+            val mainPocket = currentPockets.firstOrNull { p ->
+                p.isActive && p.walletType.trim().equals("Main", ignoreCase = true)
+            }
+
+            // Find Inactive Investments pocket
+            val inactiveInvestmentsPocket = currentPockets.firstOrNull { p ->
+                p.walletType.trim().equals("Investment", ignoreCase = true) &&
+                p.name.trim().equals("Inactive Investments", ignoreCase = true)
+            }
+
+            if (mainPocket == null) {
+                _messageFlow.emit("No active Main pocket found")
+                return false
+            }
+
+            if (inactiveInvestmentsPocket == null) {
+                _messageFlow.emit("Inactive Investments pocket not found")
+                return false
+            }
+
+            // Calculate split
+            val toMain = (amount * budgetPercentage / 100)
+            val toInvestment = amount - toMain
+
+            Log.d("WalletViewModel", "Adding balance: total=$amount, toMain=$toMain ($budgetPercentage%), toInvestment=$toInvestment")
+
+            // Update main pocket
+            val updatedMainDto = DataPocketUpdate(
+                id = mainPocket.id,
+                isActive = mainPocket.isActive,
+                name = mainPocket.name,
+                total = (mainPocket.total + toMain).toInt(),
+                userId = userId,
+                walletType = mainPocket.walletType
+            )
+
+            val mainResult = repository.updatePocket(updatedMainDto)
+            mainResult.onFailure { ex ->
+                _messageFlow.emit("Failed to update Main pocket: ${ex.message}")
+                return false
+            }
+
+            // Update inactive investments pocket
+            val updatedInvestmentDto = DataPocketUpdate(
+                id = inactiveInvestmentsPocket.id,
+                isActive = inactiveInvestmentsPocket.isActive,
+                name = inactiveInvestmentsPocket.name,
+                total = (inactiveInvestmentsPocket.total + toInvestment).toInt(),
+                userId = userId,
+                walletType = inactiveInvestmentsPocket.walletType
+            )
+
+            val investmentResult = repository.updatePocket(updatedInvestmentDto)
+            investmentResult.onFailure { ex ->
+                _messageFlow.emit("Failed to update Inactive Investments pocket: ${ex.message}")
+                return false
+            }
+
+            // Reload pockets to reflect changes
+            loadPocketsFor(userId)
+
+            _messageFlow.emit("Balance added successfully!")
+            return true
+        } catch (e: Exception) {
+            Log.e("WalletViewModel", "Exception adding balance", e)
+            _messageFlow.emit("Failed to add balance: ${e.message}")
+            return false
+        } finally {
+            _isLoading.value = false
+        }
     }
 }
