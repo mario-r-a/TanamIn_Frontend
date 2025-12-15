@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map // Icon untuk Course
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,12 +25,14 @@ import com.mario.tanamin.ui.view.CourseView // Import CourseView
 import com.mario.tanamin.ui.view.LoginView
 //import com.mario.tanamin.ui.view.HomeView
 import com.mario.tanamin.ui.view.WalletView
+import com.mario.tanamin.ui.view.ProfileView
 
 enum class AppView(val title: String, val icon: ImageVector? = null) {
     Login("Login"),
     Home("Home", Icons.Filled.Home),
     Wallet("Wallet", Icons.Filled.AccountBalanceWallet),
-    Course("Course", Icons.Filled.Map) // Menambahkan Enum Course
+    Course("Course", Icons.Filled.Map), // Menambahkan Enum Course
+    Profile("Profile", Icons.Filled.Person)
 }
 
 data class BottomNavItem(val view: AppView, val label: String)
@@ -44,7 +47,8 @@ fun TanamInAppRoute() {
     val bottomNavItems = listOf(
         BottomNavItem(AppView.Home, "Home"),
         BottomNavItem(AppView.Wallet, "Wallets"),
-        BottomNavItem(AppView.Course, "Course")
+        BottomNavItem(AppView.Course, "Course"),
+        BottomNavItem(AppView.Profile, "Profile")
     )
 
     Scaffold(
@@ -78,6 +82,9 @@ fun TanamInAppRoute() {
             // Mendaftarkan CourseView ke NavHost
             composable(route = AppView.Course.name) {
                 CourseView(navController = navController)
+            }
+            composable(route = AppView.Profile.name) {
+                ProfileView(navController = navController)
             }
         }
     }
