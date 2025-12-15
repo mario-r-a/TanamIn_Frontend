@@ -32,4 +32,19 @@ interface TanamInService {
     
     @GET("api/profile")
     suspend fun getProfile(): Response<ProfileResponse>
+
+    @POST("api/transactions")
+    suspend fun createTransaction(
+        @Body request: com.mario.tanamin.data.dto.CreateTransactionRequest
+    ): Response<com.mario.tanamin.data.dto.TransactionSingleResponse>
+
+    @GET("api/transactions/pocket/{pocketId}")
+    suspend fun getTransactionsByPocket(
+        @Path("pocketId") pocketId: Int
+    ): Response<com.mario.tanamin.data.dto.TransactionListResponse>
+
+    @POST("api/pockets")
+    suspend fun createPocket(
+        @Body request: com.mario.tanamin.data.dto.CreatePocketRequest
+    ): Response<com.mario.tanamin.data.dto.CreatePocketResponse>
 }

@@ -36,9 +36,9 @@ class PocketDetailViewModel(
     private val _messageFlow = MutableSharedFlow<String>()
     val messageFlow: SharedFlow<String> = _messageFlow.asSharedFlow()
 
-    // TODO: Add transactions list state when backend is ready
-    // private val _transactions = MutableStateFlow<List<TransactionModel>>(emptyList())
-    // val transactions: StateFlow<List<TransactionModel>> = _transactions.asStateFlow()
+    // Transaction list state
+    private val _transactions = MutableStateFlow<List<com.mario.tanamin.data.dto.TransactionResponse>>(emptyList())
+    val transactions: StateFlow<List<com.mario.tanamin.data.dto.TransactionResponse>> = _transactions.asStateFlow()
 
     /**
      * Load a specific pocket by ID and populate available targets.
@@ -61,6 +61,9 @@ class PocketDetailViewModel(
                                     p.isActive && !p.name.equals("Active Investments", ignoreCase = true) && p.id != pocketId
                                 }
                                 _availableTargets.value = targets
+                                
+                                // Load transactions for this pocket
+                                loadTransactions(pocketId)
                             } else {
                                 _error.value = "Pocket not found"
                                 Log.d("PocketDetailViewModel", "Pocket with id=$pocketId not found")
@@ -178,10 +181,37 @@ class PocketDetailViewModel(
             val newTargets = _availableTargets.value.map { if (it.id == updatedTo.id) updatedTo else it }
             _availableTargets.value = newTargets
 
+            // Record transaction
+            Log.d("PocketDetailViewModel", "Creating transaction record...")
+            try {
+                // "Move" transaction
+                val req = com.mario.tanamin.data.dto.CreateTransactionRequest(
+                    date = java.time.LocalDateTime.now().toString(), // ISO string locally
+                    name = "Move to ${updatedTo.name}",
+                    pricePerUnit = 1,
+                    action = "Move Money",
+                    nominal = amount.toInt(),
+                    unitAmount = amount.toInt(),
+                    pocketId = from.id,
+                    toPocketId = toPocketId
+                )
+                repository.createTransaction(req)
+                    .onSuccess {
+                        Log.d("PocketDetailViewModel", "Transaction created successfully: $it")
+                    }
+                    .onFailure {
+                        Log.e("PocketDetailViewModel", "Failed to create transaction record", it)
+                    }
+            } catch (ignored: Exception) {
+                 Log.e("PocketDetailViewModel", "Exception creating transaction", ignored)
+            }
+
             // Reload the current pocket from server to ensure we have the authoritative state
             // (in case server modified other fields or we want to be certain of the final total)
             val currentPocketId = from.id
             val userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull()
+            Log.d("PocketDetailViewModel", "Reloading pocket data for user $userId, pocket $currentPocketId")
+            
             if (userId != null) {
                 repository.getPocketsByUser(userId)
                     .onSuccess { pockets ->
@@ -193,7 +223,16 @@ class PocketDetailViewModel(
                                 p.isActive && !p.name.equals("Active Investments", ignoreCase = true) && p.id != currentPocketId
                             }
                             _availableTargets.value = targets
+                            
+                            // Reload transactions
+                            Log.d("PocketDetailViewModel", "Reloading transactions after refresh...")
+                            loadTransactions(currentPocketId)
+                        } else {
+                            Log.w("PocketDetailViewModel", "Refreshed pocket not found in list")
                         }
+                    }
+                    .onFailure {
+                        Log.e("PocketDetailViewModel", "Failed to refresh pockets", it)
                     }
             }
 
@@ -206,7 +245,7 @@ class PocketDetailViewModel(
             _isLoading.value = false
         }
     }
-
+    
     /**
      * Transfer money from the current pocket to a target pocket (with validation and optimistic update).
      * Delegates to suspend implementation.
@@ -227,8 +266,20 @@ class PocketDetailViewModel(
         moveMoney(toPocketId, amount)
     }
 
+    // Load transactions from API
     fun loadTransactions(pocketId: Int) {
-        // Will be implemented when transaction endpoints are ready
+        Log.d("PocketDetailViewModel", "Loading transactions for pocket $pocketId")
+        viewModelScope.launch {
+             repository.getTransactionsByPocket(pocketId)
+                 .onSuccess { list ->
+                     Log.d("PocketDetailViewModel", "Loaded ${list.size} transactions")
+                     // simple sort desc by id or date if needed? backend might sort
+                     _transactions.value = list.sortedByDescending { it.id } // assume higher ID = newer
+                 }
+                 .onFailure {
+                     Log.e("PocketDetailViewModel", "Failed to load transactions", it)
+                 }
+        }
     }
 
     fun clear() {
@@ -236,5 +287,6 @@ class PocketDetailViewModel(
         _error.value = null
         _isLoading.value = false
         _availableTargets.value = emptyList()
+        _transactions.value = emptyList()
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,8 @@ import com.mario.tanamin.ui.model.PocketModel
 import com.mario.tanamin.ui.viewmodel.WalletViewModel
 import java.text.NumberFormat
 import java.util.Locale
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 
 
 @Composable
@@ -115,8 +118,12 @@ fun WalletView(
 
                 // Content switch handled by VM-level state
                 when (selectedScreen) {
-                    WalletViewModel.WalletScreen.Main -> MainWalletView(mainTotal = formattedMainTotal)
-                    WalletViewModel.WalletScreen.Investment -> InvestmentWalletView(totalInvestedFormatted = formattedInvestmentTotal)
+                    WalletViewModel.WalletScreen.Main -> MainWalletView(
+                        mainTotal = formattedMainTotal
+                    )
+                    WalletViewModel.WalletScreen.Investment -> InvestmentWalletView(
+                        totalInvestedFormatted = formattedInvestmentTotal
+                    )
                 }
             }
 
@@ -142,7 +149,9 @@ fun WalletView(
 }
 
 @Composable
-private fun MainWalletView(mainTotal: String) {
+private fun MainWalletView(
+    mainTotal: String
+) {
     // Main-specific layout: keeps the MainWalletCard, action buttons and label
     Column(modifier = Modifier.fillMaxWidth()) {
         MainWalletCard(mainTotal = mainTotal)
@@ -151,12 +160,12 @@ private fun MainWalletView(mainTotal: String) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ActionButton(text = "Add Pocket", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
-            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
+            ActionButton(text = "Add Pocket", icon = Icons.Default.Add, modifier = Modifier.weight(1f), onClick = {})
+            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f), onClick = {})
         }
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = "Pockets",
+            text = "Total Pockets",
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
             color = Color(0xFF222B45),
@@ -166,7 +175,9 @@ private fun MainWalletView(mainTotal: String) {
 }
 
 @Composable
-private fun InvestmentWalletView(totalInvestedFormatted: String) {
+private fun InvestmentWalletView(
+    totalInvestedFormatted: String
+) {
     // Investment-specific layout: same style as Main wallet
     Column(modifier = Modifier.fillMaxWidth()) {
         InvestmentWalletCard(formattedTotal = totalInvestedFormatted)
@@ -175,12 +186,12 @@ private fun InvestmentWalletView(totalInvestedFormatted: String) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ActionButton(text = "Budgeting", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
-            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
+            ActionButton(text = "Budgeting", icon = Icons.Default.Add, modifier = Modifier.weight(1f), onClick = {})
+            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f), onClick = {})
         }
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = "Pockets",
+            text = "Investment Pockets",
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
             color = Color(0xFF222B45),
@@ -231,6 +242,67 @@ fun InvestmentWalletCard(formattedTotal: String) {
         }
     }
 }
+
+
+
+
+
+
+@Composable
+fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    val bg = if (selected) Color(0xFFFFB86C) else Color.White
+    val fg = Color.Black
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = fg,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 16.sp
+        )
+    }
+}
+
+
+
+@Composable
+fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF37c447))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = Color(0xFF37c447),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+    }
+}
+
+
 
 
 @Composable
@@ -311,26 +383,6 @@ fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navCon
     }
 }
 
-@Composable
-fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) Color(0xFFFFB86C) else Color.White
-    val fg = Color.Black
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = fg,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 16.sp
-        )
-    }
-}
 
 @Composable
 fun MainWalletCard(mainTotal: String) {
@@ -375,37 +427,83 @@ fun MainWalletCard(mainTotal: String) {
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF37c447))
-            .clickable { },
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = Color(0xFF37c447),
-                    modifier = Modifier.size(18.dp)
+fun AddPocketDialog(onDismiss: () -> Unit, onConfirm: (String, Long) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var initialBalance by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Pocket") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Pocket Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = initialBalance,
+                    onValueChange = { initialBalance = it },
+                    label = { Text("Initial Balance") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        },
+        confirmButton = {
+            Button(onClick = {
+                val balance = initialBalance.toLongOrNull() ?: 0L
+                onConfirm(name, balance)
+            }, enabled = name.isNotBlank()) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
-    }
+    )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddBalanceDialog(onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+    var amount by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Balance") },
+        text = {
+            Column {
+                Text("Top up your main wallet.")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Amount") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val value = amount.toLongOrNull() ?: 0L
+                if (value > 0) onConfirm(value)
+            }, enabled = (amount.toLongOrNull() ?: 0L) > 0) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

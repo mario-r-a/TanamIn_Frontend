@@ -61,6 +61,8 @@ fun PocketDetailView(
         viewModel.loadPocket(pocketId)
     }
 
+    val transactions by viewModel.transactions.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -108,6 +110,7 @@ fun PocketDetailView(
                 } else if (pocket != null) {
                     PocketDetailContent(
                         pocket = pocket!!,
+                        transactions = transactions,
                         onMoveClicked = { showMoveDialog = true },
                         onSellClicked = onSell,
                         onBuyClicked = onBuy,
@@ -135,6 +138,7 @@ fun PocketDetailView(
 @Composable
 private fun PocketDetailContent(
     pocket: PocketModel,
+    transactions: List<com.mario.tanamin.data.dto.TransactionResponse>,
     onMoveClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onBuyClicked: () -> Unit,
@@ -319,15 +323,26 @@ private fun PocketDetailContent(
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // TODO: Replace with actual transactions from ViewModel
-            items(4) { _ ->
+            items(transactions.size) { index ->
+                val tx = transactions[index]
+                // Parse date (simplified for now, ideally use a formatter)
+                val dateStr = tx.date.take(10) + " " + tx.date.drop(11).take(5) // simple ISO cut
+                val formattedAmount = NumberFormat.getCurrencyInstance(Locale("id", "ID")).format(tx.nominal)
+                    .replace("Rp", "Rp. ")
+                    .replace(",00", "")
+                
                 TransactionHistoryItem(
-                    description = "Beli Saham BBCA - 3 lot x Rp 30.000",
-                    date = "10 Des 2025, 13:04",
-                    amount = "Rp. 30.000",
-                    label = "Buy"
+                    description = tx.name,
+                    date = dateStr,
+                    amount = formattedAmount,
+                    label = tx.action
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+            if (transactions.isEmpty()) {
+                item {
+                    Text("No transactions yet", modifier = Modifier.padding(16.dp), color = Color.Gray)
+                }
             }
         }
     }

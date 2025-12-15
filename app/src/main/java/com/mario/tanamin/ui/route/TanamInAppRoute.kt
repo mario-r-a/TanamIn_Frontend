@@ -55,28 +55,22 @@ fun MyBottomNavBar(
     currentDestination: NavDestination?,
     items: List<BottomNavItem>
 ) {
-    // Logic: Bottom bar hanya muncul jika route saat ini ada di dalam list bottomNavItems
-    // (Artinya: Login tidak akan menampilkan bottom bar)
-    val showBottomBar = items.any { it.view.name == currentDestination?.route }
-
-    if (showBottomBar) {
-        NavigationBar {
-            items.forEach { item ->
-                NavigationBarItem(
-                    icon = { Icon(item.view.icon!!, contentDescription = item.label) },
-                    label = { Text(item.label) },
-                    selected = currentDestination?.hierarchy?.any { it.route == item.view.name } == true,
-                    onClick = {
-                        navController.navigate(item.view.name) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+    NavigationBar {
+        items.forEach { item ->
+            NavigationBarItem(
+                icon = { Icon(item.view.icon!!, contentDescription = item.label) },
+                label = { Text(item.label) },
+                selected = currentDestination?.hierarchy?.any { it.route == item.view.name } == true,
+                onClick = {
+                    navController.navigate(item.view.name) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
                         }
+                        launchSingleTop = true
+                        restoreState = true
                     }
-                )
-            }
+                }
+            )
         }
     }
 }
@@ -100,14 +94,19 @@ fun TanamInAppRoute() {
         BottomNavItem(AppView.Profile, "Profile")
     )
 
+    // Check for showBottomBar
+     val showBottomBar = bottomNavItems.any { it.view.name == currentRoute }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
-                MyBottomNavBar(
-                    navController = navController,
-                    currentDestination = currentDestination,
-                    items = bottomNavItems
-                )
+                if (showBottomBar) {
+                    MyBottomNavBar(
+                        navController = navController,
+                        currentDestination = currentDestination,
+                        items = bottomNavItems
+                    )
+                }
             }
         ) { innerPadding ->
             NavHost(
@@ -124,7 +123,7 @@ fun TanamInAppRoute() {
                 composable(route = AppView.Home.name) {
                     // HomeView(navController = navController)
                     // Sementara text dulu agar tidak error saat navigasi
-                    Text("Home Screen Placeholder", modifier = Modifier.padding(50.dp))
+                    Text("Home Screen Placeholder. Route: $currentRoute, ShowBar: $showBottomBar", modifier = Modifier.padding(50.dp))
                 }
                 composable(route = AppView.Wallet.name) {
                     WalletView(navController = navController)

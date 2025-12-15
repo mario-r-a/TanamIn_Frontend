@@ -130,4 +130,70 @@ class TanamInRepository(private val tanamInService: TanamInService) {
             return Result.failure(e)
         }
     }
+
+    suspend fun createTransaction(request: com.mario.tanamin.data.dto.CreateTransactionRequest): Result<com.mario.tanamin.data.dto.TransactionResponse> {
+        return try {
+            val response = tanamInService.createTransaction(request)
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "createTransaction HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.data)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "createTransaction exception", e)
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun getTransactionsByPocket(pocketId: Int): Result<List<com.mario.tanamin.data.dto.TransactionResponse>> {
+        return try {
+            val response = tanamInService.getTransactionsByPocket(pocketId)
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "getTransactionsByPocket HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.data)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "getTransactionsByPocket exception", e)
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun createPocket(request: com.mario.tanamin.data.dto.CreatePocketRequest): Result<PocketModel> {
+        return try {
+            val response = tanamInService.createPocket(request)
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "createPocket HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            val dto = body.data
+            // Map directly to PocketModel
+             val pocketModel = PocketModel(
+                id = dto.id,
+                name = dto.name,
+                total = dto.total.toLong(),
+                isActive = dto.isActive,
+                walletType = dto.walletType
+            )
+            // notify existing flows? maybe not needed if caller refreshes, but consistency is good
+            // Note: create usually adds to list, getPocketsByUser might need to be called again or we just update local cache if we had one.
+            // For now, returning success is enough, ViewModel can reload.
+            Result.success(pocketModel)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "createPocket exception", e)
+            return Result.failure(e)
+        }
+    }
 }
