@@ -1,14 +1,11 @@
 package com.mario.tanamin.ui.route
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map // Icon untuk Course
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,16 +24,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.Alignment
 import com.mario.tanamin.ui.view.CourseView // Import CourseView
 import com.mario.tanamin.ui.view.LoginView
 import com.mario.tanamin.ui.view.WalletView
 import com.mario.tanamin.ui.view.PocketDetailView
 
-enum class AppView(val title: String, val icon: ImageVector? = null) {
-    Login("Login"),
-    Home("Home", Icons.Filled.Home),
-    Wallet("Wallet", Icons.Filled.AccountBalanceWallet),
-    Course("Course", Icons.Filled.Map) // Menambahkan Enum Course
+enum class AppView(val icon: ImageVector? = null) {
+    Login(null),
+    Home(Icons.Filled.Home),
+    Wallet(Icons.Filled.AccountBalanceWallet),
+    Course(Icons.Filled.Map) // Menambahkan Enum Course
 }
 
 data class BottomNavItem(val view: AppView, val label: String)
@@ -46,6 +44,7 @@ fun TanamInAppRoute() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val currentRoute = navBackStackEntry?.destination?.route
 
     // Menambahkan Course ke list menu bawah
     val bottomNavItems = listOf(
@@ -117,7 +116,7 @@ fun TanamInAppRoute() {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Invalid pocket ID", color = Color.Red)
+                        Text("Invalid pocket ID", color = androidx.compose.ui.graphics.Color.Red)
                     }
                 }
             }
@@ -169,7 +168,7 @@ fun PocketDetailTopBar(
                 text = title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF222B45)
+                color = androidx.compose.ui.graphics.Color(0xFF222B45)
             )
         },
         navigationIcon = {
@@ -177,13 +176,12 @@ fun PocketDetailTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color(0xFF222B45)
+                    tint = androidx.compose.ui.graphics.Color(0xFF222B45)
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color(0xFFFFB86C)
+            containerColor = androidx.compose.ui.graphics.Color(0xFFFFB86C)
         )
     )
 }
-
