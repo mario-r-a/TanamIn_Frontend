@@ -15,13 +15,14 @@ import kotlinx.coroutines.launch
  * - Exposes pockets list, loading state and error message as StateFlows.
  * - Use loadPocketsFor(userId) if you pass the user id explicitly.
  * - Use loadPocketsFromInMemoryUser() to read the user id from InMemorySessionHolder (set on login).
+ *
+ * This ViewModel exposes PocketModel lists; the view will format amounts for display.
  */
 class WalletViewModel(
     private val repository: TanamInRepository = TanamInContainer().tanamInRepository
 ) : ViewModel() {
 
     private val _pockets = MutableStateFlow<List<PocketModel>>(emptyList())
-    val pockets: StateFlow<List<PocketModel>> = _pockets.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -38,6 +39,40 @@ class WalletViewModel(
             }.sumOf { it.total }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    // Derived StateFlow containing only active pockets with walletType == "Main"
+    val activeMainPockets: StateFlow<List<PocketModel>> = _pockets
+        .map { list ->
+            list.filter { p ->
+                val wt = p.walletType.trim()
+                p.isActive && wt.equals("Main", ignoreCase = true)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Derived StateFlow containing pockets with walletType == "Investment" (case-insensitive).
+    val investmentPockets: StateFlow<List<PocketModel>> = _pockets
+        .map { list ->
+            list.filter { p ->
+                val wt = p.walletType.trim()
+                wt.equals("Investment", ignoreCase = true)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Investment total as Long
+    val investmentTotalFlow: StateFlow<Long> = _pockets
+        .map { list ->
+            list.filter { p ->
+                p.walletType.trim().equals("Investment", ignoreCase = true)
+            }.sumOf { it.total }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    init {
+        // Load pockets when ViewModel created
+        loadPocketsFromInMemoryUser()
+    }
 
     /** Load pockets for a given user id (preferred: explicit). */
     fun loadPocketsFor(userId: Int) {
