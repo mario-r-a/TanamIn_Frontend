@@ -3,6 +3,7 @@ package com.mario.tanamin.data.service
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
+import com.mario.tanamin.data.dto.ProfileResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -19,4 +20,7 @@ interface TanamInService {
     suspend fun getPocketsByUser(
         @Path("userId") userId: Int
     ): Response<PocketResponse>
+
+    @GET("api/profile")
+    suspend fun getProfile(): Response<ProfileResponse>
 }

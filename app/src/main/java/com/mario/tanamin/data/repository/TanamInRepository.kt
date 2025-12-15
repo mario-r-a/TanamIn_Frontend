@@ -70,4 +70,20 @@ class TanamInRepository(private val tanamInService: TanamInService) {
             return Result.failure(e)
         }
     }
+
+    suspend fun getProfile(): Result<com.mario.tanamin.data.dto.DataProfile> {
+        return try {
+            val response: Response<com.mario.tanamin.data.dto.ProfileResponse> = tanamInService.getProfile()
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.`data`)
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+    }
 }
