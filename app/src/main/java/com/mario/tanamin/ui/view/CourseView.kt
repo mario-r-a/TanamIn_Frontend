@@ -7,9 +7,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -95,7 +94,7 @@ fun CourseView(navController: NavController) {
                 StatCard(
                     title = "Coins",
                     value = "0",
-                    icon = Icons.Default.Diamond,
+                    icon = Icons.Default.Paid,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -112,18 +111,16 @@ fun CourseView(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 5. Course Levels (The Winding Path)
-            // Menggunakan loop atau manual call untuk 5 level
             // Level 1 (Left - Orange)
             CourseLevelCard(
                 level = 1,
                 title = "Investment Basics",
                 colorTheme = Color(0xFFFFB86C), // Orange
-                buttonColor = Color(0xFF8CD87D), // Greenish button
+                buttonColor = Color(0xFFd3842f), // Dark Orange button
                 isLeftAligned = true
             )
 
-            PathConnectorDots() // Dots between levels
+            PathConnectorDots()
 
             // Level 2 (Right - Green)
             CourseLevelCard(
@@ -141,7 +138,7 @@ fun CourseView(navController: NavController) {
                 level = 3,
                 title = "Investment Basics",
                 colorTheme = Color(0xFFFFB86C),
-                buttonColor = Color(0xFF8CD87D),
+                buttonColor = Color(0xFFd3842f), // Dark Orange button
                 isLeftAligned = true
             )
 
@@ -158,12 +155,12 @@ fun CourseView(navController: NavController) {
 
             PathConnectorDots()
 
-            // Level 5 (Left - Orange/Blue variation? Let's stick to Orange pattern)
+            // Level 5 (Left)
             CourseLevelCard(
                 level = 5,
                 title = "Investment Basics",
                 colorTheme = Color(0xFFFFB86C),
-                buttonColor = Color(0xFF8CD87D),
+                buttonColor = Color(0xFFd3842f), // Dark Orange button
                 isLeftAligned = true
             )
 
@@ -173,7 +170,7 @@ fun CourseView(navController: NavController) {
     }
 }
 
-// --- Reusable Components ---
+// ===== KOMPONEN-KOMPONEN =====
 
 @Composable
 fun StatCard(
@@ -236,7 +233,6 @@ fun CourseLevelCard(
     buttonColor: Color,
     isLeftAligned: Boolean
 ) {
-    // Card Width logic: The card takes about 60-70% of width, remaining is spacer
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -244,7 +240,7 @@ fun CourseLevelCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isLeftAligned) {
-            Spacer(modifier = Modifier.weight(0.4f)) // Push to right
+            Spacer(modifier = Modifier.weight(0.4f)) // Push ke kanan
         }
 
         // The Card Content
@@ -324,8 +320,7 @@ fun CourseLevelCard(
 }
 
 @Composable
-fun PathConnectorDots() {
-    // Creates the visual "..." connection between cards
+fun PathConnectorDots() { // ini buat titik-titik nya di antara level
     Column(
         modifier = Modifier
             .fillMaxWidth()
