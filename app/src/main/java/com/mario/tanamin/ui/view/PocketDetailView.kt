@@ -1,8 +1,10 @@
 package com.mario.tanamin.ui.view
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,13 +28,16 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PocketDetailView(
     navController: NavController,
     pocketId: Int,
-    viewModel: PocketDetailViewModel = viewModel()
+    viewModel: PocketDetailViewModel = viewModel(),
+    onSell: () -> Unit = {},
+    onBuy: () -> Unit = {}
 ) {
     val pocket by viewModel.pocket.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -40,6 +45,7 @@ fun PocketDetailView(
     val availableTargets by viewModel.availableTargets.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    // coroutineScope not needed here (snackbar uses LaunchedEffect)
 
     // Collect one-shot messages from the ViewModel
     LaunchedEffect(Unit) {
@@ -72,8 +78,6 @@ fun PocketDetailView(
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             containerColor = Color.Transparent
         ) { innerPadding ->
-            // Do NOT apply innerPadding to the full content container so the header
-            // can extend to the top. Apply innerPadding only to the scrollable content below.
             Box(modifier = Modifier.fillMaxSize()) {
                 if (isLoading) {
                     Box(
@@ -101,22 +105,24 @@ fun PocketDetailView(
                         }
                     }
                 } else if (pocket != null) {
-                    // Pass innerPadding to the content so lists/scrollables will not be obscured by
-                    // navigation bars / snackbar areas.
                     PocketDetailContent(
                         pocket = pocket!!,
                         onMoveClicked = { showMoveDialog = true },
+                        onSellClicked = onSell,
+                        onBuyClicked = onBuy,
                         contentPadding = innerPadding
                     )
                 }
 
-                if (showMoveDialog) {
+                // Dialog outside pocket != null check to avoid recomposition issues
+                if (showMoveDialog && pocket != null) {
                     MoveMoneyDialog(
                         availableTargets = availableTargets,
+                        maxAmount = pocket!!.total,
                         onDismiss = { showMoveDialog = false },
-                        onMove = { toPocketId, amount ->
-                            viewModel.transferMoney(toPocketId, amount)
-                            showMoveDialog = false
+                        onMoveSuspend = { toPocketId, amount ->
+                            // delegate to ViewModel suspend function
+                            viewModel.transferMoneySuspend(toPocketId, amount)
                         }
                     )
                 }
@@ -127,11 +133,47 @@ fun PocketDetailView(
 
 @Composable
 private fun PocketDetailContent(
-    pocket: com.mario.tanamin.ui.model.PocketModel,
+    pocket: PocketModel,
     onMoveClicked: () -> Unit,
+    onSellClicked: () -> Unit,
+    onBuyClicked: () -> Unit,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     val formattedTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(pocket.total)
+
+    // Decide button label and behaviour
+    val walletType = pocket.walletType.trim()
+    val pocketNameLower = pocket.name.lowercase(Locale.getDefault())
+    // Normalize name: remove non-alphanumeric, collapse spaces, lowercase for robust comparison
+    val normalizedName = pocket.name
+        .lowercase(Locale.getDefault())
+        .replace(Regex("[^a-z0-9\\s]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    // Determine which button to show:
+    // - Main => Move Money
+    // - Investment & name contains "active" => Sell Investment
+    // - Investment & name contains "inactive" => Move to Main (calls onBuyClicked)
+    // - Investment & name equals "Inactive Investment" => show two buttons (Move Money + Sell Investment)
+    // Be permissive: walletType may be 'Investment', 'Investments', or similar; match on 'invest'
+    val isInvestment = walletType.contains("invest", ignoreCase = true)
+    val isMain = walletType.contains("main", ignoreCase = true)
+    // Make sure 'inactive' does not accidentally match 'active' ("inactive" contains "active").
+    val isActiveInvestment = isInvestment && pocketNameLower.contains("active") && !pocketNameLower.contains("inactive")
+    // Consider inactive if name explicitly contains 'inactive' (robust to plural/suffixes)
+    val isInactiveInvestment = isInvestment && pocketNameLower.contains("inactive")
+
+    // Debug log to help verify which branch is active at runtime
+    Log.d("PocketDetailView", "pocket='${pocket.name}' walletType='${walletType}' isMain=$isMain isInvestment=$isInvestment isActiveInvestment=$isActiveInvestment isInactiveInvestment=$isInactiveInvestment")
+
+    val buttonText = when {
+        isMain -> "Move Money"
+        isActiveInvestment -> "Sell Investment"
+        isInactiveInvestment -> "Move to Main"
+        isInvestment -> "Investment Action"
+        else -> "Action"
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -146,7 +188,8 @@ private fun PocketDetailContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding(), // respect the status bar, so the orange header visually starts under it
+                    .statusBarsPadding() // respect the status bar, so the orange header visually starts under it
+                    .padding(horizontal = 16.dp), // add horizontal padding so header content (buttons) aren't flush to edge
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -167,54 +210,114 @@ private fun PocketDetailContent(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Move Money Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.White)
-                        .clickable { onMoveClicked() }
-                        .padding(horizontal = 20.dp, vertical = 10.dp)
-                ) {
+                // Action Button (behaviour depends on pocket type/name)
+                // If this is an inactive Investment pocket, show two actions side-by-side:
+                //  - Move Money (opens Move dialog)
+                //  - Sell Investment (calls onSellClicked)
+                if (isInactiveInvestment) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Move Money",
-                            color = Color(0xFF222B45),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = Color(0xFF222B45),
-                            modifier = Modifier.size(16.dp)
-                        )
+                        // Move Money button
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White)
+                                .clickable { onMoveClicked() }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Move Money", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                            }
+                        }
+
+                        // Buy Investment button (was Sell Investment)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFFFFF7ED))
+                                .clickable { onBuyClicked() }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Buy Investment", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color.White)
+                            .clickable {
+                                when {
+                                    isMain -> onMoveClicked()
+                                    isActiveInvestment -> onSellClicked()
+                                    isInactiveInvestment -> onBuyClicked()
+                                    isInvestment -> onSellClicked()
+                                    else -> { /* no-op */ }
+                                }
+                            }
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = buttonText,
+                                color = Color(0xFF222B45),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = Color(0xFF222B45),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // History Section
+        // Fixed History header (stays visible while list scrolls)
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp)) {
+            Text(
+                text = "History",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF222B45),
+                modifier = Modifier.padding(top = 42.dp)
+            )
+        }
+
+        // Scrollable list of history items only (header is outside so it won't scroll)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding) // ensure scaffold insets are respected for the scrollable area
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            item {
-                Text(
-                    text = "History",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222B45)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
             // TODO: Replace with actual transactions from ViewModel
             items(4) { _ ->
                 TransactionHistoryItem(
@@ -233,24 +336,63 @@ private fun PocketDetailContent(
 @Composable
 fun MoveMoneyDialog(
     availableTargets: List<PocketModel>,
+    maxAmount: Long? = null,
     onDismiss: () -> Unit,
-    onMove: (toPocketId: Int, amount: Long) -> Unit
+    onMoveSuspend: suspend (toPocketId: Int, amount: Long) -> Boolean
 ) {
     var amountText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var selectedTarget by remember { mutableStateOf<PocketModel?>(if (availableTargets.isNotEmpty()) availableTargets[0] else null) }
+    val coroutineScope = rememberCoroutineScope()
+    var isProcessing by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    // helper to parse amount
+    fun parsedAmount(): Long {
+        return amountText.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
+    }
+
+    val amount = parsedAmount()
+    val exceedsMax = maxAmount != null && amount > maxAmount
+    val isConfirmEnabled = !isProcessing && selectedTarget != null && amount > 0L && !exceedsMax
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
-                val amount = amountText.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
-                val toId = selectedTarget?.id
-                if (toId != null) {
-                    onMove(toId, amount)
+                // validate again
+                localError = null
+                if (selectedTarget == null) {
+                    localError = "Select a target pocket"
+                    return@TextButton
                 }
-            }) {
-                Text("Move")
+                if (amount <= 0L) {
+                    localError = "Enter a valid amount"
+                    return@TextButton
+                }
+                if (exceedsMax) {
+                    localError = "Amount exceeds available balance"
+                    return@TextButton
+                }
+
+                // Call suspend function
+                coroutineScope.launch {
+                    isProcessing = true
+                    val toId = selectedTarget!!.id
+                    val success = try {
+                        onMoveSuspend(toId, amount)
+                    } catch (e: Exception) {
+                        false
+                    }
+                    isProcessing = false
+                    if (success) {
+                        onDismiss()
+                    }
+                }
+
+            }, enabled = isConfirmEnabled) {
+                if (isProcessing) CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                else Text("Move")
             }
         },
         dismissButton = {
@@ -266,6 +408,10 @@ fun MoveMoneyDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (maxAmount != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(text = "Available: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}", style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -293,6 +439,10 @@ fun MoveMoneyDialog(
                             )
                         }
                     }
+                }
+                if (localError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = localError ?: "", color = Color.Red, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

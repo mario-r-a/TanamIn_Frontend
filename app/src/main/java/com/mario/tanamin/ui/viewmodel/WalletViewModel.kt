@@ -30,6 +30,16 @@ class WalletViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // UI screen selection for the Wallet view
+    enum class WalletScreen { Main, Investment }
+
+    private val _selectedScreen = MutableStateFlow(WalletScreen.Main)
+    val selectedScreen: StateFlow<WalletScreen> = _selectedScreen.asStateFlow()
+
+    fun setSelectedScreen(screen: WalletScreen) {
+        _selectedScreen.value = screen
+    }
+
     // Derived reactive total: sums active Main pockets; UI can collect this to guarantee updates.
     val mainTotalFlow: StateFlow<Long> = _pockets
         .map { list ->
@@ -70,6 +80,16 @@ class WalletViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
     init {
+        // listen for repository updates and apply incremental changes
+        viewModelScope.launch {
+            repository.pocketsUpdated.collect { updatedPocket ->
+                // apply the updated pocket to the current list if present
+                val current = _pockets.value
+                val replaced = current.map { if (it.id == updatedPocket.id) updatedPocket else it }
+                _pockets.value = replaced
+            }
+        }
+
         // Load pockets when ViewModel created
         loadPocketsFromInMemoryUser()
     }

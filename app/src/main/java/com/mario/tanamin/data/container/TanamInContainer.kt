@@ -13,37 +13,45 @@ import java.util.concurrent.TimeUnit
 class TanamInContainer {
     companion object {
         val BASE_URL = "http://10.0.2.2:3000/"
-    }
 
-    // Interceptor that attaches Authorization header if token exists in InMemorySessionHolder
-    private val authInterceptor = Interceptor { chain ->
-        val original = chain.request()
-        val token = InMemorySessionHolder.token
-        val requestBuilder = original.newBuilder()
-        if (!token.isNullOrBlank()) {
-            requestBuilder.addHeader("Authorization", "Bearer $token")
+        // Interceptor that attaches Authorization header if token exists in InMemorySessionHolder
+        private val authInterceptor = Interceptor { chain ->
+            val original = chain.request()
+            val token = InMemorySessionHolder.token
+            val requestBuilder = original.newBuilder()
+            if (!token.isNullOrBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $token")
+            }
+            val request = requestBuilder.build()
+            chain.proceed(request)
         }
-        val request = requestBuilder.build()
-        chain.proceed(request)
+
+        private val okHttpClient by lazy {
+            OkHttpClient.Builder()
+                .addInterceptor(authInterceptor)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
+        }
+
+        private val retrofit by lazy {
+            Retrofit.Builder()
+                .client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
+                .baseUrl(BASE_URL)
+                .build()
+        }
+
+        private val tanamInService: TanamInService by lazy {
+            retrofit.create(TanamInService::class.java)
+        }
+
+        val tanamInRepository: TanamInRepository by lazy {
+            TanamInRepository(tanamInService)
+        }
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(authInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
-
-    private val retrofit = Retrofit.Builder()
-        .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
-        .baseUrl(BASE_URL)
-        .build()
-
-    private val tanamInService: TanamInService by lazy {
-        retrofit.create(TanamInService::class.java)
-    }
-
-    val tanamInRepository: TanamInRepository by lazy {
-        TanamInRepository(tanamInService)
-    }
+    // Keep instance accessor for existing call sites (TanamInContainer().tanamInRepository)
+    val tanamInRepository: TanamInRepository
+        get() = Companion.tanamInRepository
 }

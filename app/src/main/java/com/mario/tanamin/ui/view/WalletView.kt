@@ -14,9 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,9 +32,6 @@ import com.mario.tanamin.ui.viewmodel.WalletViewModel
 import java.text.NumberFormat
 import java.util.Locale
 
-// Tabs enum
-private enum class WalletTab { Main, Investment }
-
 
 @Composable
 fun WalletView(
@@ -51,8 +45,8 @@ fun WalletView(
     val investmentTotal by walletViewModel.investmentTotalFlow.collectAsState()
     val loading by walletViewModel.isLoading.collectAsState()
 
-    // UI tab state
-    var selectedTab by remember { mutableStateOf(WalletTab.Main) }
+    // Collect selected screen from VM
+    val selectedScreen by walletViewModel.selectedScreen.collectAsState()
 
     val formattedMainTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(mainTotal)
     val formattedInvestmentTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(investmentTotal)
@@ -109,20 +103,20 @@ fun WalletView(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tabs
+                // Tabs — now wired to ViewModel
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TabPill(text = "Main", selected = (selectedTab == WalletTab.Main)) { selectedTab = WalletTab.Main }
-                    TabPill(text = "Investment", selected = (selectedTab == WalletTab.Investment)) { selectedTab = WalletTab.Investment }
+                    TabPill(text = "Main", selected = (selectedScreen == WalletViewModel.WalletScreen.Main)) { walletViewModel.setSelectedScreen(WalletViewModel.WalletScreen.Main) }
+                    TabPill(text = "Investment", selected = (selectedScreen == WalletViewModel.WalletScreen.Investment)) { walletViewModel.setSelectedScreen(WalletViewModel.WalletScreen.Investment) }
                 }
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Content switch: entirely UI-driven; VM provides models
-                when (selectedTab) {
-                    WalletTab.Main -> MainContent(mainTotal = formattedMainTotal)
-                    WalletTab.Investment -> InvestmentContent(totalInvestedFormatted = formattedInvestmentTotal)
+                // Content switch handled by VM-level state
+                when (selectedScreen) {
+                    WalletViewModel.WalletScreen.Main -> MainWalletView(mainTotal = formattedMainTotal)
+                    WalletViewModel.WalletScreen.Investment -> InvestmentWalletView(totalInvestedFormatted = formattedInvestmentTotal)
                 }
             }
 
@@ -138,9 +132,9 @@ fun WalletView(
                 }
             } else {
                 // Use VM-provided model lists
-                when (selectedTab) {
-                    WalletTab.Main -> item { PocketsGridFromModels(pockets = activeMain, navController = navController) }
-                    WalletTab.Investment -> item { PocketsGridFromModels(pockets = investments, navController = navController) }
+                when (selectedScreen) {
+                    WalletViewModel.WalletScreen.Main -> item { PocketsGridFromModels(pockets = activeMain, navController = navController) }
+                    WalletViewModel.WalletScreen.Investment -> item { PocketsGridFromModels(pockets = investments, navController = navController) }
                 }
             }
         }
@@ -148,7 +142,7 @@ fun WalletView(
 }
 
 @Composable
-private fun MainContent(mainTotal: String) {
+private fun MainWalletView(mainTotal: String) {
     // Main-specific layout: keeps the MainWalletCard, action buttons and label
     Column(modifier = Modifier.fillMaxWidth()) {
         MainWalletCard(mainTotal = mainTotal)
@@ -172,7 +166,7 @@ private fun MainContent(mainTotal: String) {
 }
 
 @Composable
-private fun InvestmentContent(totalInvestedFormatted: String) {
+private fun InvestmentWalletView(totalInvestedFormatted: String) {
     // Investment-specific layout: same style as Main wallet
     Column(modifier = Modifier.fillMaxWidth()) {
         InvestmentWalletCard(formattedTotal = totalInvestedFormatted)
