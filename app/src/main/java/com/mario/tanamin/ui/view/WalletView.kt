@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,12 +30,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.mario.tanamin.ui.model.PocketModel
 import com.mario.tanamin.ui.viewmodel.WalletViewModel
 import java.text.NumberFormat
 import java.util.Locale
-
-// Simple local model used only within this view to render pocket cards
-data class PocketData(val name: String, val amount: String)
 
 // Tabs enum
 private enum class WalletTab { Main, Investment }
@@ -47,43 +44,24 @@ fun WalletView(
     navController: NavController,
     walletViewModel: WalletViewModel = viewModel()
 ) {
-    // Collect only active Main pockets as required
+    // Collect model-level data from ViewModel
+    val mainTotal by walletViewModel.mainTotalFlow.collectAsState()
     val activeMain by walletViewModel.activeMainPockets.collectAsState()
     val investments by walletViewModel.investmentPockets.collectAsState()
+    val investmentTotal by walletViewModel.investmentTotalFlow.collectAsState()
     val loading by walletViewModel.isLoading.collectAsState()
-    val mainTotal by walletViewModel.mainTotalFlow.collectAsState()
 
     // UI tab state
     var selectedTab by remember { mutableStateOf(WalletTab.Main) }
 
-    LaunchedEffect(Unit) {
-        walletViewModel.loadPocketsFromInMemoryUser()
-    }
-
     val formattedMainTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(mainTotal)
+    val formattedInvestmentTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(investmentTotal)
 
     val topGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFFFFB86C), Color(0xFFFFE3A3), Color.White),
         startY = 0f,
         endY = 520f
     )
-
-    // Build pocket data list based on selected tab
-    val pocketDataList: List<PocketData> = if (selectedTab == WalletTab.Main) {
-        activeMain.map { p ->
-            PocketData(
-                p.name,
-                "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(p.total)}"
-            )
-        }
-    } else {
-        investments.map { p ->
-            PocketData(
-                p.name,
-                "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(p.total)}"
-            )
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -141,20 +119,14 @@ fun WalletView(
                 }
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Content switch: completely different views per tab
+                // Content switch: entirely UI-driven; VM provides models
                 when (selectedTab) {
-                    WalletTab.Main -> {
-                        MainContent(mainTotal = formattedMainTotal)
-                    }
-                    WalletTab.Investment -> {
-                        // compute total directly from investments (they contain numeric totals)
-                        val investmentTotal: Long = investments.sumOf { it.total }
-                        InvestmentContent(totalInvested = investmentTotal)
-                    }
+                    WalletTab.Main -> MainContent(mainTotal = formattedMainTotal)
+                    WalletTab.Investment -> InvestmentContent(totalInvestedFormatted = formattedInvestmentTotal)
                 }
             }
 
-            // Show loading / error / pockets
+            // Show loading / pockets
             if (loading) {
                 item {
                     Box(
@@ -165,11 +137,10 @@ fun WalletView(
                     }
                 }
             } else {
-                // The content composables above have already emitted the visible UI. We still display
-                // the list part for each tab as a separate item so scrolling works smoothly.
+                // Use VM-provided model lists
                 when (selectedTab) {
-                    WalletTab.Main -> item { PocketsGrid(pockets = pocketDataList) }
-                    WalletTab.Investment -> item { InvestmentList(pockets = pocketDataList) }
+                    WalletTab.Main -> item { PocketsGridFromModels(pockets = activeMain, navController = navController) }
+                    WalletTab.Investment -> item { PocketsGridFromModels(pockets = investments, navController = navController) }
                 }
             }
         }
@@ -201,15 +172,21 @@ private fun MainContent(mainTotal: String) {
 }
 
 @Composable
-private fun InvestmentContent(totalInvested: Long) {
-    // Investment-specific layout: different summary card, different actions, different label
+private fun InvestmentContent(totalInvestedFormatted: String) {
+    // Investment-specific layout: same style as Main wallet
     Column(modifier = Modifier.fillMaxWidth()) {
-        InvestmentSummaryCard(totalInvested = totalInvested)
-        Spacer(modifier = Modifier.height(12.dp))
-        InvestmentActions()
-        Spacer(modifier = Modifier.height(16.dp))
+        InvestmentWalletCard(formattedTotal = totalInvestedFormatted)
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ActionButton(text = "Budgeting", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
+            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
+        }
+        Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = "Your Investments",
+            text = "Pockets",
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
             color = Color(0xFF222B45),
@@ -219,48 +196,123 @@ private fun InvestmentContent(totalInvested: Long) {
 }
 
 @Composable
-fun InvestmentSummaryCard(totalInvested: Long) {
-    val formatted = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(totalInvested)
+fun InvestmentWalletCard(formattedTotal: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(110.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFEDE7F6)),
+            .height(100.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFFFFB86C)),
         contentAlignment = Alignment.CenterStart
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "Investment Wallet", fontWeight = FontWeight.Medium, color = Color(0xFF222B45))
+        // Decorative circles - matching the design
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .offset(x = (-16).dp, y = 60.dp)
+                .background(Color(0xFFFFE3A3).copy(alpha = 0.35f), shape = CircleShape)
+        ) {}
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .offset(x = 220.dp, y = (-18).dp)
+                .background(Color(0xFFFFE3A3).copy(alpha = 0.18f), shape = CircleShape)
+        ) {}
+        Column(
+            modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp)
+        ) {
+            Text(
+                text = "Investment Wallet",
+                color = Color(0xFF222B45),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
             Spacer(modifier = Modifier.height(6.dp))
-            Text(text = "Rp$formatted", fontWeight = FontWeight.Bold, fontSize = 26.sp, color = Color(0xFF222B45))
+            Text(
+                text = "Rp$formattedTotal",
+                color = Color(0xFF222B45),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+
+@Composable
+fun PocketsGridFromModels(pockets: List<PocketModel>, navController: NavController) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        val rows: List<List<PocketModel>> = pockets.chunked(2)
+        rows.forEach { pair: List<PocketModel> ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                PocketCardFromModel(pair[0], Modifier.weight(1f), navController)
+                if (pair.size > 1) {
+                    PocketCardFromModel(pair[1], Modifier.weight(1f), navController)
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
 
 @Composable
-fun InvestmentActions() {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navController: NavController) {
+    val formatted = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(data.total)
+    Box(
+        modifier = modifier
+            .height(120.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFFFFB86C))
+            .clickable { navController.navigate("PocketDetail/${data.id}") },
+        contentAlignment = Alignment.TopStart
+    ) {
+        // Decorative circle
         Box(
             modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF7E57C2))
-                .clickable { },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "Invest", color = Color.White, fontWeight = FontWeight.Bold)
-        }
-        Box(
+                .size(36.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 8.dp, y = 8.dp)
+                .background(Color(0xFFFFE3A3).copy(alpha = 0.45f), shape = CircleShape)
+        ) {}
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFB39DDB))
-                .clickable { },
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(start = 16.dp, top = 16.dp, bottom = 12.dp, end = 12.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Top
         ) {
-            Text(text = "Withdraw", color = Color.White, fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB86C),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = data.name,
+                color = Color(0xFF222B45),
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+            )
+            Text(
+                text = "Rp$formatted",
+                color = Color(0xFF222B45),
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -360,126 +412,6 @@ fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier)
     }
 }
 
-@Composable
-fun PocketsGrid(pockets: List<PocketData>) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        val rows: List<List<PocketData>> = pockets.chunked(2)
-        rows.forEach { pair: List<PocketData> ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                PocketCard(pair[0], Modifier.weight(1f))
-                if (pair.size > 1) {
-                    PocketCard(pair[1], Modifier.weight(1f))
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun PocketCard(data: PocketData, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(120.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFFFFB86C)),
-        contentAlignment = Alignment.TopStart
-    ) {
-        // Decorative circle
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .align(Alignment.BottomEnd)
-                .offset(x = 8.dp, y = 8.dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.45f), shape = CircleShape)
-        ) {}
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, top = 16.dp, bottom = 12.dp, end = 12.dp),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Top
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = Color(0xFFFFB86C),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = data.name,
-                color = Color(0xFF222B45),
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-            )
-            Text(
-                text = data.amount,
-                color = Color(0xFF222B45),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun InvestmentList(pockets: List<PocketData>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        pockets.forEach { p ->
-            InvestmentCard(data = p)
-        }
-    }
-}
-
-@Composable
-fun InvestmentCard(data: PocketData) {
-    // Different styling for investment items (full-width card)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFEFEFEF)),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = Color(0xFF777777),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(text = data.name, fontWeight = FontWeight.Medium, color = Color(0xFF222B45))
-                Text(text = data.amount, fontWeight = FontWeight.Bold, color = Color(0xFF222B45))
-            }
-        }
-    }
-}
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

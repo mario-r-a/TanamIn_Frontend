@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
  * - Exposes pockets list, loading state and error message as StateFlows.
  * - Use loadPocketsFor(userId) if you pass the user id explicitly.
  * - Use loadPocketsFromInMemoryUser() to read the user id from InMemorySessionHolder (set on login).
+ *
+ * This ViewModel exposes PocketModel lists; the view will format amounts for display.
  */
 class WalletViewModel(
     private val repository: TanamInRepository = TanamInContainer().tanamInRepository
@@ -38,7 +40,7 @@ class WalletViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
-    // New: derived StateFlow containing only active pockets with walletType == "Main"
+    // Derived StateFlow containing only active pockets with walletType == "Main"
     val activeMainPockets: StateFlow<List<PocketModel>> = _pockets
         .map { list ->
             list.filter { p ->
@@ -48,7 +50,7 @@ class WalletViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // New: derived StateFlow containing pockets with walletType == "Investment" (case-insensitive).
+    // Derived StateFlow containing pockets with walletType == "Investment" (case-insensitive).
     val investmentPockets: StateFlow<List<PocketModel>> = _pockets
         .map { list ->
             list.filter { p ->
@@ -57,6 +59,20 @@ class WalletViewModel(
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Investment total as Long
+    val investmentTotalFlow: StateFlow<Long> = _pockets
+        .map { list ->
+            list.filter { p ->
+                p.walletType.trim().equals("Investment", ignoreCase = true)
+            }.sumOf { it.total }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    init {
+        // Load pockets when ViewModel created
+        loadPocketsFromInMemoryUser()
+    }
 
     /** Load pockets for a given user id (preferred: explicit). */
     fun loadPocketsFor(userId: Int) {
