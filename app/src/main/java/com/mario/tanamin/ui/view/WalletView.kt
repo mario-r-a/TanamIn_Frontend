@@ -147,7 +147,7 @@ fun WalletView(
                         mainTotal = formattedMainTotal,
                         onAddBalanceClick = { showAddBalanceDialog = true }
                     )
-                    WalletViewModel.WalletScreen.Investment -> InvestmentWalletView(totalInvestedFormatted = formattedInvestmentTotal)
+                    WalletViewModel.WalletScreen.Investment -> InvestmentWalletView(totalInvestedFormatted = formattedInvestmentTotal, onAddBalanceClick = { showAddBalanceDialog = true })
                 }
             }
 
@@ -219,7 +219,7 @@ private fun MainWalletView(mainTotal: String, onAddBalanceClick: () -> Unit = {}
 }
 
 @Composable
-private fun InvestmentWalletView(totalInvestedFormatted: String) {
+private fun InvestmentWalletView(totalInvestedFormatted: String, onAddBalanceClick: () -> Unit = {}) {
     // Investment-specific layout: same style as Main wallet
     Column(modifier = Modifier.fillMaxWidth()) {
         InvestmentWalletCard(formattedTotal = totalInvestedFormatted)
@@ -229,7 +229,7 @@ private fun InvestmentWalletView(totalInvestedFormatted: String) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ActionButton(text = "Budgeting", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
-            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f))
+            ActionButton(text = "Add Balance", icon = Icons.Default.Add, modifier = Modifier.weight(1f), onClick = onAddBalanceClick)
         }
         Spacer(modifier = Modifier.height(18.dp))
         Text(
