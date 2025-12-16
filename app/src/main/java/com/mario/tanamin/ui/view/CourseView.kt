@@ -99,17 +99,17 @@ fun CourseView(navController: NavController) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // 4. Recommended Courses Title
             Text(
-                text = "Recommended Courses",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                text = "Consistency is the key to success!",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF222B45)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Level 1 (Left - Orange)
             CourseLevelCard(
