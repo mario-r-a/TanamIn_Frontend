@@ -12,6 +12,9 @@ import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,10 +27,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mario.tanamin.ui.viewmodel.CourseViewModel
 
 @Composable
 fun CourseView(navController: NavController) {
-    // Gradient background similar to WalletView styling
+    val viewModel: CourseViewModel = viewModel()
+    val levels by viewModel.levels.collectAsState(initial = emptyList())
+    val isLoading by viewModel.isLoading.collectAsState(initial = false)
+    val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
+    val coins by viewModel.coins.collectAsState(initial = 0)
+    val streakCount by viewModel.streak.collectAsState(initial = 0)
+
+    // Reload data ketika user kembali dari quiz
+    LaunchedEffect(Unit) {
+        viewModel.loadLevels()
+        viewModel.loadProfile()
+    }
+
     val topGradient = Brush.verticalGradient(
         colors = listOf(Color(0xFFfeac57), Color(0xFFffca91), Color.White),
         startY = 0f,
@@ -39,7 +56,7 @@ fun CourseView(navController: NavController) {
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // Gradient overlay at the top
+        // Gradient overlay at the top - Hiasan
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,13 +104,13 @@ fun CourseView(navController: NavController) {
             ) {
                 StatCard(
                     title = "Streak",
-                    value = "0 Days",
+                    value = "${streakCount} Days",
                     icon = Icons.Default.LocalFireDepartment,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = "Coins",
-                    value = "0",
+                    value = "$coins",
                     icon = Icons.Default.Paid,
                     modifier = Modifier.weight(1f)
                 )
@@ -101,7 +118,7 @@ fun CourseView(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 4. Recommended Courses Title
+            // 3. Motivational Text
             Text(
                 text = "Consistency is the key to success!",
                 fontSize = 20.sp,
@@ -111,58 +128,52 @@ fun CourseView(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Level 1 (Left - Orange)
-            CourseLevelCard(
-                level = 1,
-                title = "Investment Basics",
-                colorTheme = Color(0xFFFFB86C), // Orange
-                buttonColor = Color(0xFFd3842f), // Dark Orange button
-                isLeftAligned = true
-            )
+            // --- Dynamic levels rendering ---
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading levels...", color = Color(0xFF222B45))
+                    }
+                }
+                !errorMessage.isNullOrBlank() -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Error: ${errorMessage}", color = Color.Red)
+                    }
+                }
+                else -> {
+                    if (levels.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Text(text = "No levels available", color = Color(0xFF222B45))
+                        }
+                    } else {
+                        levels.forEachIndexed { index, level ->
+                            val unlocked = if (index == 0) true else levels.getOrNull(index - 1)?.isCompleted == true
 
-            PathConnectorDots()
+                            val isLeft = index % 2 == 0
+                            val colorTheme = if (isLeft) Color(0xFFFFB86C) else Color(0xFF8CD87D)
+                            val buttonColor = if (isLeft) Color(0xFFd3842f) else Color(0xFF425E44)
 
-            // Level 2 (Right - Green)
-            CourseLevelCard(
-                level = 2,
-                title = "Investment Basics",
-                colorTheme = Color(0xFF8CD87D), // Green
-                buttonColor = Color(0xFF425E44), // Darker Green button
-                isLeftAligned = false
-            )
+                            CourseLevelCard(
+                                level = index + 1,
+                                title = level.name,
+                                colorTheme = colorTheme,
+                                buttonColor = buttonColor,
+                                isLeftAligned = isLeft,
+                                enabled = unlocked,
+                                onStart = {
+                                    // when enabled; navigate to QuizView later
+                                    //navController.navigate("StartQuiz/${level.id}") coba ganti
+                                    navController.navigate("Quiz/${level.id}/${level.name}")
+                                }
+                            )
 
-            PathConnectorDots()
-
-            // Level 3 (Left - Orange)
-            CourseLevelCard(
-                level = 3,
-                title = "Investment Basics",
-                colorTheme = Color(0xFFFFB86C),
-                buttonColor = Color(0xFFd3842f), // Dark Orange button
-                isLeftAligned = true
-            )
-
-            PathConnectorDots()
-
-            // Level 4 (Right - Green)
-            CourseLevelCard(
-                level = 4,
-                title = "Investment Basics",
-                colorTheme = Color(0xFF8CD87D),
-                buttonColor = Color(0xFF425E44),
-                isLeftAligned = false
-            )
-
-            PathConnectorDots()
-
-            // Level 5 (Left)
-            CourseLevelCard(
-                level = 5,
-                title = "Investment Basics",
-                colorTheme = Color(0xFFFFB86C),
-                buttonColor = Color(0xFFd3842f), // Dark Orange button
-                isLeftAligned = true
-            )
+                            if (index != levels.lastIndex) {
+                                PathConnectorDots()
+                            }
+                        }
+                    }
+                }
+            }
 
             // Bottom padding for scrolling
             Spacer(modifier = Modifier.height(100.dp))
@@ -231,7 +242,9 @@ fun CourseLevelCard(
     title: String,
     colorTheme: Color,
     buttonColor: Color,
-    isLeftAligned: Boolean
+    isLeftAligned: Boolean,
+    enabled: Boolean = true,
+    onStart: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -244,12 +257,14 @@ fun CourseLevelCard(
         }
 
         // The Card Content
+        val cardColor = if (enabled) colorTheme else Color.LightGray.copy(alpha = 0.6f)
+
         Box(
             modifier = Modifier
-                .weight(1f) // Takes more space
+                .weight(1f)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
-                .background(colorTheme)
+                .background(cardColor)
         ) {
             // Decorative Circle (Top Right)
             Box(
@@ -277,7 +292,7 @@ fun CourseLevelCard(
                 Text(
                     text = "Complete courses to earn gems!",
                     fontSize = 11.sp,
-                    color = Color(0xFF222B45),
+                    color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f),
                     fontWeight = FontWeight.Medium
                 )
 
@@ -286,35 +301,36 @@ fun CourseLevelCard(
                         text = "Level $level",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF222B45)
+                        color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f)
                     )
                     Text(
                         text = title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF222B45)
+                        color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f)
                     )
                 }
 
                 Button(
-                    onClick = { /* Handle Start Course */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                    onClick = { if (enabled) onStart() },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(containerColor = if (enabled) buttonColor else Color.Gray),
                     shape = RoundedCornerShape(50),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Text(
-                        text = "Start Course",
+                        text = if (enabled) "Start Course" else "Locked",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.White.copy(alpha = if (enabled) 1f else 0.9f)
                     )
                 }
             }
         }
 
         if (isLeftAligned) {
-            Spacer(modifier = Modifier.weight(0.4f)) // Push content to left
+            Spacer(modifier = Modifier.weight(0.4f)) // Push ke kiri
         }
     }
 }

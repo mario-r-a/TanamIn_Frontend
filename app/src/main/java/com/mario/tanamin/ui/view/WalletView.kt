@@ -126,7 +126,7 @@ fun WalletView(
                         tint = Color(0xFF222B45),
                         modifier = Modifier
                             .size(28.dp)
-                            .clickable { navController.navigate("settings") }
+                            //.clickable { navController.navigate("settings") }
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))

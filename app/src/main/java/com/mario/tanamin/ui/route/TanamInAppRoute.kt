@@ -11,16 +11,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map // Icon untuk Course
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -32,18 +34,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.mario.tanamin.ui.view.CourseView // Import CourseView
+import com.mario.tanamin.ui.view.CourseView
 import com.mario.tanamin.ui.view.LoginView
 //import com.mario.tanamin.ui.view.HomeView
 import com.mario.tanamin.ui.view.WalletView
 import com.mario.tanamin.ui.view.ProfileView
 import com.mario.tanamin.ui.view.PocketDetailView
+import com.mario.tanamin.ui.view.StartQuizView
+import com.mario.tanamin.ui.viewmodel.StartQuizViewModel
 
 enum class AppView(val title: String, val icon: ImageVector? = null) {
     Login("Login"),
     Home("Home", Icons.Filled.Home),
     Wallet("Wallet", Icons.Filled.AccountBalanceWallet),
-    Course("Course", Icons.Filled.Map), // Menambahkan Enum Course
+    Course("Course", Icons.Filled.Map),
     Profile("Profile", Icons.Filled.Person)
 }
 
@@ -92,6 +96,9 @@ fun TanamInAppRoute() {
     // Check if current route is PocketDetail
     val isPocketDetailView = currentRoute?.startsWith("PocketDetail/") == true
 
+    // Check if current route is Quiz
+    val isStartQuizView = currentRoute?.startsWith("Quiz/") == true
+
     // Menambahkan Course ke list menu bawah
     val bottomNavItems = listOf(
         BottomNavItem(AppView.Home, "Home"),
@@ -99,6 +106,9 @@ fun TanamInAppRoute() {
         BottomNavItem(AppView.Course, "Course"),
         BottomNavItem(AppView.Profile, "Profile")
     )
+
+    // Var untuk menampung state ViewModel
+    var isQuizFinished = false
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -129,7 +139,6 @@ fun TanamInAppRoute() {
                 composable(route = AppView.Wallet.name) {
                     WalletView(navController = navController)
                 }
-                // Mendaftarkan CourseView ke NavHost
                 composable(route = AppView.Course.name) {
                     CourseView(navController = navController)
                 }
@@ -146,11 +155,28 @@ fun TanamInAppRoute() {
                         pocketId = pocketId
                     )
                 }
+                composable(
+                    //route = "Quiz/{levelId}", coba-coba ganti
+                    route = "Quiz/{levelId}/{levelName}",
+                    arguments = listOf(
+                        navArgument("levelId") { type = NavType.IntType },
+                        navArgument("levelName") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
+                    val levelName = backStackEntry.arguments?.getString("levelName") ?: "Unknown Level"
+                    StartQuizView(
+                        navController = navController,
+                        levelId = levelId,
+                        levelName = levelName,
+                        viewModel = viewModel()
+                    )
+                }
             }
         }
 
-        // Floating back button for PocketDetail view
-        if (isPocketDetailView) {
+        // Floating back button for PocketDetail and StartQuiz view
+        if (isPocketDetailView || isStartQuizView) {
             Box(
                 modifier = Modifier
                     .padding(start = 16.dp, top = 60.dp)
