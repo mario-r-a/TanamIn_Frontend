@@ -1,11 +1,18 @@
 package com.mario.tanamin.data.repository
 
 import android.util.Log
+import com.mario.tanamin.data.dto.CourseCompletionRequest
+import com.mario.tanamin.data.dto.DataLevel
 import com.mario.tanamin.data.dto.DataPocket
 import com.mario.tanamin.data.dto.DataPocketUpdate
+import com.mario.tanamin.data.dto.DataQuestion
+import com.mario.tanamin.data.dto.LevelResponse
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
+import com.mario.tanamin.data.dto.QuestionResponse
+import com.mario.tanamin.data.dto.UpdateLevelRequest
+import com.mario.tanamin.data.dto.UpdateLevelResponse
 import com.mario.tanamin.data.dto.UpdatePocketResponse
 import com.mario.tanamin.data.service.TanamInService
 import com.mario.tanamin.ui.model.PocketModel
@@ -128,6 +135,98 @@ class TanamInRepository(private val tanamInService: TanamInService) {
             Result.success(body.`data`)
         } catch (e: Exception) {
             return Result.failure(e)
+        }
+    }
+
+    suspend fun getLevelsByUserDto(): Result<List<DataLevel>> {
+        return try {
+            val response: Response<LevelResponse> = tanamInService.getLevelsByUser()
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "getLevelsByUserDto HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                Log.d("TanamInRepository", "getLevelsByUserDto empty body")
+                return Result.failure(Exception("Empty response body"))
+            }
+            val levels = body.`data`
+            Log.d("TanamInRepository", "getLevelsByUserDto received ${levels.size} levels")
+            Result.success(levels)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "getLevelsByUserDto exception", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getQuestionsByLevel(levelId: Int): Result<List<DataQuestion>> {
+        return try {
+            val response: Response<QuestionResponse> = tanamInService.getQuestionsByLevel(levelId)
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "getQuestionsByLevel HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                Log.d("TanamInRepository", "getQuestionsByLevel empty body")
+                return Result.failure(Exception("Empty response body"))
+            }
+            val questions = body.`data`
+            Log.d("TanamInRepository", "getQuestionsByLevel received ${questions.size} questions for levelId=${levelId}")
+            Result.success(questions)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "getQuestionsByLevel exception", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun handleCourseCompletion(coinDelta: Int, claimStreak: Boolean): Result<com.mario.tanamin.data.dto.DataProfile> {
+        return try {
+            val request = CourseCompletionRequest(coinDelta, claimStreak)
+            Log.d("TanamInRepository", "handleCourseCompletion: coinDelta=$coinDelta, claimStreak=$claimStreak")
+            val response = tanamInService.handleCourseCompletion(request)
+
+            if (!response.isSuccessful) {
+                Log.e("TanamInRepository", "handleCourseCompletion HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                Log.e("TanamInRepository", "handleCourseCompletion: empty body")
+                return Result.failure(Exception("Empty response body"))
+            }
+            Log.d("TanamInRepository", "handleCourseCompletion success: coin=${body.data.coin}, streak=${body.data.streak}")
+            Result.success(body.data)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "handleCourseCompletion exception", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateLevel(levelId: Int, isCompleted: Boolean): Result<DataLevel> {
+        return try {
+            val request = UpdateLevelRequest(isCompleted)
+            Log.d("TanamInRepository", "updateLevel: levelId=$levelId, isCompleted=$isCompleted")
+            val response: Response<UpdateLevelResponse> = tanamInService.updateLevel(levelId, request)
+
+            if (!response.isSuccessful) {
+                Log.e("TanamInRepository", "updateLevel HTTP ${response.code()}: ${response.message()}")
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+
+            val body = response.body()
+            if (body == null) {
+                Log.e("TanamInRepository", "updateLevel: empty body")
+                return Result.failure(Exception("Empty response body"))
+            }
+
+            // UpdateLevelResponse.data is a single DataLevel object
+            val updatedLevel = body.`data`
+            Log.d("TanamInRepository", "updateLevel success: level ${updatedLevel.id}, isCompleted=${updatedLevel.isCompleted}")
+            Result.success(updatedLevel)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "updateLevel exception", e)
+            Result.failure(e)
         }
     }
 }
