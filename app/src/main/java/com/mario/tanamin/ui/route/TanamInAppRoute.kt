@@ -147,85 +147,85 @@ fun TanamInAppRoute() {
         BottomNavItem(AppView.Profile, "Profile")
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // NavHost tanpa Scaffold, sehingga konten tidak dibatasi oleh bottomBar padding
-        NavHost(
-            navController = navController,
-            startDestination = AppView.Login.name, // Start di Login
-            modifier = Modifier.fillMaxSize()
-        ) {
-            composable(route = AppView.Login.name) {
-                LoginView(
-                    navController = navController,
-                    loginViewModel = viewModel()
-                )
-            }
-            composable(route = AppView.Home.name) {
-                // HomeView(navController = navController)
-                // Sementara text dulu agar tidak error saat navigasi
-                Text("Home Screen Placeholder", modifier = Modifier.padding(50.dp))
-            }
-            composable(route = AppView.Wallet.name) {
-                WalletView(navController = navController)
-            }
-            composable(route = AppView.Course.name) {
-                CourseView(navController = navController)
-            }
-            composable(route = AppView.Profile.name) {
-                ProfileView(navController = navController)
-            }
-            composable(
-                route = "PocketDetail/{pocketId}",
-                arguments = listOf(navArgument("pocketId") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val pocketId = backStackEntry.arguments?.getInt("pocketId") ?: 0
-                PocketDetailView(
-                    navController = navController,
-                    pocketId = pocketId
-                )
-            }
-            composable(
-                //route = "Quiz/{levelId}", coba-coba ganti
-                route = "Quiz/{levelId}/{levelName}",
-                arguments = listOf(
-                    navArgument("levelId") { type = NavType.IntType },
-                    navArgument("levelName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
-                val levelName = backStackEntry.arguments?.getString("levelName") ?: "Unknown Level"
-                StartQuizView(
-                    navController = navController,
-                    levelId = levelId,
-                    levelName = levelName,
-                    viewModel = viewModel()
-                )
-            }
+    Scaffold(
+        bottomBar = {
+            MyBottomNavBar(
+                navController = navController,
+                currentDestination = currentDestination,
+                items = bottomNavItems
+            )
         }
-
-        // Navbar di-overlay di atas konten (floating on top)
-        MyBottomNavBar(
-            navController = navController,
-            currentDestination = currentDestination,
-            items = bottomNavItems,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
-        // Floating back button for PocketDetail and StartQuiz view
-        if (isPocketDetailView || isStartQuizView) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp, top = 60.dp)
-                    .size(40.dp)
-                    .background(Color.White, shape = CircleShape)
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                modifier = Modifier.padding(innerPadding),
+                navController = navController,
+                startDestination = AppView.Login.name,
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFFFFB86C)
-                )
+                composable(route = AppView.Login.name) {
+                    LoginView(
+                        navController = navController,
+                        loginViewModel = viewModel()
+                    )
+                }
+                composable(route = AppView.Home.name) {
+                    // HomeView(navController = navController)
+                    // Sementara text dulu agar tidak error saat navigasi
+                    Text("Home Screen Placeholder", modifier = Modifier.padding(50.dp))
+                }
+                composable(route = AppView.Wallet.name) {
+                    WalletView(navController = navController)
+                }
+                composable(route = AppView.Course.name) {
+                    CourseView(navController = navController)
+                }
+                composable(route = AppView.Profile.name) {
+                    ProfileView(navController = navController)
+                }
+                composable(
+                    route = "PocketDetail/{pocketId}",
+                    arguments = listOf(navArgument("pocketId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val pocketId = backStackEntry.arguments?.getInt("pocketId") ?: 0
+                    PocketDetailView(
+                        navController = navController,
+                        pocketId = pocketId
+                    )
+                }
+                composable(
+                    route = "Quiz/{levelId}/{levelName}",
+                    arguments = listOf(
+                        navArgument("levelId") { type = NavType.IntType },
+                        navArgument("levelName") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
+                    val levelName = backStackEntry.arguments?.getString("levelName") ?: "Unknown Level"
+                    StartQuizView(
+                        navController = navController,
+                        levelId = levelId,
+                        levelName = levelName,
+                        viewModel = viewModel()
+                    )
+                }
+            }
+
+            // Floating back button for PocketDetail and StartQuiz view
+            if (isPocketDetailView || isStartQuizView) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp, top = 60.dp)
+                        .size(40.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .clickable { navController.popBackStack() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color(0xFFFFB86C)
+                    )
+                }
             }
         }
     }
