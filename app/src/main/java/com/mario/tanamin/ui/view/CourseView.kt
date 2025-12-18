@@ -175,8 +175,8 @@ fun CourseView(navController: NavController) {
                 }
             }
 
-            // Bottom padding for scrolling
-            Spacer(modifier = Modifier.height(100.dp))
+            // Bottom padding for scrolling (agar konten tidak tertutup floating navbar)
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }
