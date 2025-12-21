@@ -40,13 +40,16 @@ import com.mario.tanamin.ui.view.WalletView
 import com.mario.tanamin.ui.view.ProfileView
 import com.mario.tanamin.ui.view.PocketDetailView
 import com.mario.tanamin.ui.view.StartQuizView
+import com.mario.tanamin.ui.view.ThemeShopScreen
+import com.mario.tanamin.ui.viewmodel.AppViewModel
 
 enum class AppView(val icon: ImageVector? = null) {
     Login(null),
     Home(Icons.Filled.Home),
     Wallet(Icons.Filled.AccountBalanceWallet),
     Course(Icons.Filled.Map),
-    Profile(Icons.Filled.Person)
+    Profile(Icons.Filled.Person),
+    ThemeShop(null) // No icon as it's not on bottom bar
 }
 
 data class BottomNavItem(val view: AppView, val label: String)
@@ -65,11 +68,11 @@ fun MyBottomNavBar(
     if (showBottomBar) {
         // Floating pill-style bottom bar with shadow and rounded corners
         // Keep navigation logic identical to previous implementation
-        val selectedColor = Color(0xFFFFB86C) // accent orange
-        val unselectedColor = Color(0xFFBDBDBD) // muted grey
+        val selectedColor = MaterialTheme.colorScheme.primary
+        val unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         Surface(
             shape = RoundedCornerShape(36.dp),
-            color = Color(0xFFF7F6F2),
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shadowElevation = 10.dp,
             modifier = modifier
@@ -87,7 +90,7 @@ fun MyBottomNavBar(
                 items.forEach { item ->
                     val selected = currentDestination?.hierarchy?.any { it.route == item.view.name } == true
                     val iconTint by animateColorAsState(if (selected) selectedColor else unselectedColor)
-                    val labelColor by animateColorAsState(if (selected) selectedColor else Color(0xFF7A7A7A))
+                    val labelColor by animateColorAsState(if (selected) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -125,9 +128,10 @@ fun MyBottomNavBar(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TanamInAppRoute() {
+fun TanamInAppRoute(appViewModel: AppViewModel = viewModel()) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -208,6 +212,12 @@ fun TanamInAppRoute() {
                         viewModel = viewModel()
                     )
                 }
+                composable(route = AppView.ThemeShop.name) {
+                    ThemeShopScreen(
+                        navController = navController,
+                        appViewModel = appViewModel // Passed from MainActivity
+                    )
+                }
             }
 
             // Floating back button for PocketDetail and StartQuiz view
@@ -223,7 +233,7 @@ fun TanamInAppRoute() {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color(0xFFFFB86C)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }

@@ -64,7 +64,7 @@ fun PocketDetailView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Large decorative circle at bottom
         Box(
@@ -72,7 +72,7 @@ fun PocketDetailView(
                 .size(400.dp)
                 .offset(y = 350.dp)
                 .align(Alignment.BottomCenter)
-                .background(Color(0xFFE8D5F2), shape = CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape)
         )
 
         Scaffold(
@@ -85,7 +85,7 @@ fun PocketDetailView(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color(0xFFFFB86C))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (error != null) {
                     Box(
@@ -95,7 +95,7 @@ fun PocketDetailView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = error ?: "Unknown error",
-                                color = Color.Red,
+                                color = MaterialTheme.colorScheme.error,
                                 fontSize = 16.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -183,7 +183,7 @@ private fun PocketDetailContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFB86C))
+                .background(MaterialTheme.colorScheme.primary)
                 .padding(bottom = 24.dp)
         ) {
             Column(
@@ -198,7 +198,7 @@ private fun PocketDetailContent(
                     text = pocket.name,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222B45),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -206,7 +206,7 @@ private fun PocketDetailContent(
                     text = "Rp$formattedTotal",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222B45),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -235,9 +235,9 @@ private fun PocketDetailContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                Text("Move Money", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Text("Move Money", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
                             }
                         }
 
@@ -246,7 +246,7 @@ private fun PocketDetailContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0xFFFFF7ED))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { onBuyClicked() }
                                 .padding(horizontal = 8.dp, vertical = 10.dp)
                         ) {
@@ -255,9 +255,9 @@ private fun PocketDetailContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                Text("Buy Investment", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Text("Buy Investment", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -283,7 +283,7 @@ private fun PocketDetailContent(
                         ) {
                             Text(
                                 text = buttonText,
-                                color = Color(0xFF222B45),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 14.sp
                             )
@@ -291,7 +291,7 @@ private fun PocketDetailContent(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
-                                tint = Color(0xFF222B45),
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -306,7 +306,7 @@ private fun PocketDetailContent(
                 text = "History",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(top = 42.dp)
             )
         }
@@ -443,7 +443,7 @@ fun MoveMoneyDialog(
                 }
                 if (localError != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = localError ?: "", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                    Text(text = localError ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -473,7 +473,7 @@ fun TransactionHistoryItem(
                 text = description,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = Color(0xFF222B45)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -492,20 +492,20 @@ fun TransactionHistoryItem(
                 text = amount,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = Color(0xFF222B45)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFFFDDB3))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = label,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF222B45)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
