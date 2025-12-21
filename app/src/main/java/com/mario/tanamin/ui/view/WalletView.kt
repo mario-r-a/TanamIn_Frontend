@@ -80,7 +80,7 @@ fun WalletView(
     val formattedInvestmentTotal = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(investmentTotal)
 
     val topGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFFFFB86C), Color(0xFFFFE3A3), Color.White),
+        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surface),
         startY = 0f,
         endY = 520f
     )
@@ -88,7 +88,7 @@ fun WalletView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Box(
             modifier = Modifier
@@ -118,12 +118,12 @@ fun WalletView(
                         text = "Wallets",
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF222B45)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Settings",
-                        tint = Color(0xFF222B45),
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .size(28.dp)
                             //.clickable { navController.navigate("settings") }
@@ -212,7 +212,7 @@ private fun MainWalletView(mainTotal: String, onAddBalanceClick: () -> Unit = {}
             text = "Pockets",
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
-            color = Color(0xFF222B45),
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp)
         )
     }
@@ -236,7 +236,7 @@ private fun InvestmentWalletView(totalInvestedFormatted: String, onAddBalanceCli
             text = "Pockets",
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
-            color = Color(0xFF222B45),
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 8.dp)
         )
     }
@@ -249,7 +249,7 @@ fun InvestmentWalletCard(formattedTotal: String) {
             .fillMaxWidth()
             .height(100.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFFFFB86C)),
+            .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.CenterStart
     ) {
         // Decorative circles - matching the design
@@ -257,27 +257,27 @@ fun InvestmentWalletCard(formattedTotal: String) {
             modifier = Modifier
                 .size(48.dp)
                 .offset(x = (-16).dp, y = 60.dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.35f), shape = CircleShape)
+                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
         ) {}
         Box(
             modifier = Modifier
                 .size(60.dp)
                 .offset(x = 220.dp, y = (-18).dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.18f), shape = CircleShape)
+                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
         ) {}
         Column(
             modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp)
         ) {
             Text(
                 text = "Investment Wallet",
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Rp$formattedTotal",
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -313,7 +313,7 @@ fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navCon
         modifier = modifier
             .height(120.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFFFFB86C))
+            .background(MaterialTheme.colorScheme.primary)
             .clickable { navController.navigate("PocketDetail/${data.id}") },
         contentAlignment = Alignment.TopStart
     ) {
@@ -323,7 +323,7 @@ fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navCon
                 .size(36.dp)
                 .align(Alignment.BottomEnd)
                 .offset(x = 8.dp, y = 8.dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.45f), shape = CircleShape)
+                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
         ) {}
         Column(
             modifier = Modifier
@@ -336,26 +336,26 @@ fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navCon
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.onPrimary),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = Color(0xFFFFB86C),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = data.name,
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Medium,
                 fontSize = 15.sp,
             )
             Text(
                 text = "Rp$formatted",
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 modifier = Modifier.padding(top = 2.dp)
@@ -366,8 +366,8 @@ fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navCon
 
 @Composable
 fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) Color(0xFFFFB86C) else Color.White
-    val fg = Color.Black
+    val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -392,7 +392,7 @@ fun MainWalletCard(mainTotal: String) {
             .fillMaxWidth()
             .height(100.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFFFFB86C)),
+            .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.CenterStart
     ) {
         // Decorative circles
@@ -400,27 +400,27 @@ fun MainWalletCard(mainTotal: String) {
             modifier = Modifier
                 .size(48.dp)
                 .offset(x = (-16).dp, y = 60.dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.35f), shape = CircleShape)
+                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
         ) {}
         Box(
             modifier = Modifier
                 .size(60.dp)
                 .offset(x = 220.dp, y = (-18).dp)
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.18f), shape = CircleShape)
+                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
         ) {}
         Column(
             modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp)
         ) {
             Text(
                 text = "Main Wallet",
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Rp$mainTotal",
-                color = Color(0xFF222B45),
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -434,8 +434,7 @@ fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier,
         modifier = modifier
             .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF37c447))
-            .clickable { onClick() },
+            .background(MaterialTheme.colorScheme.secondary),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -443,18 +442,18 @@ fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier,
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.onPrimary),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = Color(0xFF37c447),
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(18.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(text = text, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }

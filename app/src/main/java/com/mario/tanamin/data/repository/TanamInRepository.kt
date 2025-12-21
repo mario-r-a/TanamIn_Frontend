@@ -10,7 +10,11 @@ import com.mario.tanamin.data.dto.LevelResponse
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
+import com.mario.tanamin.data.dto.ThemeListResponse
+import com.mario.tanamin.data.dto.SingleThemeResponse
+import com.mario.tanamin.data.dto.PurchaseThemeRequest
 import com.mario.tanamin.data.dto.QuestionResponse
+import com.mario.tanamin.data.dto.SetActiveThemeRequest
 import com.mario.tanamin.data.dto.UpdateLevelRequest
 import com.mario.tanamin.data.dto.UpdateLevelResponse
 import com.mario.tanamin.data.dto.UpdatePocketResponse
@@ -248,6 +252,59 @@ class TanamInRepository(private val tanamInService: TanamInService) {
         } catch (e: Exception) {
             Log.e("TanamInRepository", "getTransactionsByPocket exception", e)
             return Result.failure(e)
+        }
+    }
+
+    // Theme Shop Methods
+    suspend fun getThemes(): kotlinx.coroutines.flow.Flow<Result<ThemeListResponse>> = kotlinx.coroutines.flow.flow {
+        try {
+            val response = tanamInService.getThemes()
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.success(response.body()!!))
+            } else {
+                emit(Result.failure(Exception("HTTP ${response.code()}: ${response.message()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    suspend fun purchaseTheme(themeId: Int): kotlinx.coroutines.flow.Flow<Result<SingleThemeResponse>> = kotlinx.coroutines.flow.flow {
+        try {
+            val response = tanamInService.purchaseTheme(PurchaseThemeRequest(themeId))
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.success(response.body()!!))
+            } else {
+                emit(Result.failure(Exception("HTTP ${response.code()}: ${response.message()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    suspend fun activateTheme(themeId: Int): kotlinx.coroutines.flow.Flow<Result<SingleThemeResponse>> = kotlinx.coroutines.flow.flow {
+        try {
+            val response = tanamInService.activateTheme(SetActiveThemeRequest(themeId))
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.success(response.body()!!))
+            } else {
+                emit(Result.failure(Exception("HTTP ${response.code()}: ${response.message()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    suspend fun getActiveTheme(): kotlinx.coroutines.flow.Flow<Result<SingleThemeResponse>> = kotlinx.coroutines.flow.flow {
+        try {
+            val response = tanamInService.getActiveTheme()
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.success(response.body()!!))
+            } else {
+                emit(Result.failure(Exception("HTTP ${response.code()}: ${response.message()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
         }
     }
 }

@@ -46,15 +46,15 @@ fun CourseView(navController: NavController) {
     }
 
     val topGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFFfeac57), Color(0xFFffca91), Color.White),
+        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surface),
         startY = 0f,
-        endY = 400f
+        endY = 520f
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Gradient overlay at the top - Hiasan
         Box(
@@ -84,13 +84,13 @@ fun CourseView(navController: NavController) {
                     text = "Courses",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222B45)
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 // Settings Icon
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
-                    tint = Color(0xFF222B45),
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -123,7 +123,7 @@ fun CourseView(navController: NavController) {
                 text = "Consistency is the key to success!",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF222B45)
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -132,26 +132,26 @@ fun CourseView(navController: NavController) {
             when {
                 isLoading -> {
                     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text(text = "Loading levels...", color = Color(0xFF222B45))
+                        Text(text = "Loading levels...", color = MaterialTheme.colorScheme.onBackground)
                     }
                 }
                 !errorMessage.isNullOrBlank() -> {
                     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text(text = "Error: ${errorMessage}", color = Color.Red)
+                        Text(text = "Error: ${errorMessage}", color = MaterialTheme.colorScheme.error)
                     }
                 }
                 else -> {
                     if (levels.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "No levels available", color = Color(0xFF222B45))
+                            Text(text = "No levels available", color = MaterialTheme.colorScheme.onBackground)
                         }
                     } else {
                         levels.forEachIndexed { index, level ->
                             val unlocked = if (index == 0) true else levels.getOrNull(index - 1)?.isCompleted == true
 
                             val isLeft = index % 2 == 0
-                            val colorTheme = if (isLeft) Color(0xFFFFB86C) else Color(0xFF8CD87D)
-                            val buttonColor = if (isLeft) Color(0xFFd3842f) else Color(0xFF425E44)
+                            val colorTheme = if (isLeft) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                            val buttonColor = if (isLeft) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
 
                             CourseLevelCard(
                                 level = index + 1,
@@ -194,18 +194,14 @@ fun StatCard(
         modifier = modifier
             .height(80.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFFFB86C)), // Orange base
+            .background(MaterialTheme.colorScheme.primary), // Orange base
         contentAlignment = Alignment.CenterStart
     ) {
         // Decorative overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.2f))
-                    )
-                )
+                .background(Color.White.copy(alpha = 0.2f))
         )
         Row(
             modifier = Modifier.padding(16.dp),
@@ -214,7 +210,7 @@ fun StatCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF222B45),
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -222,13 +218,13 @@ fun StatCard(
                 Text(
                     text = title,
                     fontSize = 14.sp,
-                    color = Color(0xFF222B45),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = value,
                     fontSize = 18.sp,
-                    color = Color(0xFF222B45),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -292,7 +288,7 @@ fun CourseLevelCard(
                 Text(
                     text = "Complete courses to earn gems!",
                     fontSize = 11.sp,
-                    color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f),
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else 0.6f),
                     fontWeight = FontWeight.Medium
                 )
 
@@ -301,13 +297,13 @@ fun CourseLevelCard(
                         text = "Level $level",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f)
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else 0.6f)
                     )
                     Text(
                         text = title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF222B45).copy(alpha = if (enabled) 1f else 0.6f)
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else 0.6f)
                     )
                 }
 
@@ -323,7 +319,7 @@ fun CourseLevelCard(
                         text = if (enabled) "Start Course" else "Locked",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = if (enabled) 1f else 0.9f)
+                        color = if (buttonColor == Color.White) Color.Black else Color.White
                     )
                 }
             }

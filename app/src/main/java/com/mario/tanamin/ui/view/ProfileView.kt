@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.mario.tanamin.ui.route.AppView
 import com.mario.tanamin.ui.viewmodel.ProfileUiState
 import com.mario.tanamin.ui.viewmodel.ProfileViewModel
 
@@ -39,7 +40,7 @@ fun ProfileView(
 
     // Top Gradient matching WalletView but adapted if needed (User image looks similar)
     val topGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFFFFB86C), Color(0xFFFFE3A3), Color.White),
+        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surface),
         startY = 0f,
         endY = 520f
     )
@@ -47,7 +48,7 @@ fun ProfileView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Gradient Header Background
         Box(
@@ -79,12 +80,12 @@ fun ProfileView(
                         text = "Profile",
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF222B45)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Settings",
-                        tint = Color(0xFF222B45),
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -100,7 +101,7 @@ fun ProfileView(
                     is ProfileUiState.Error -> {
                         Box(modifier = Modifier.height(500.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Error: ${state.message}", color = Color.Red)
+                                Text("Error: ${state.message}", color = MaterialTheme.colorScheme.error)
                                 Button(onClick = { viewModel.fetchProfile() }) {
                                     Text("Retry")
                                 }
@@ -118,14 +119,14 @@ fun ProfileView(
                                 modifier = Modifier
                                     .size(100.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFE0E0E0)),
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = profile.name.firstOrNull()?.toString()?.uppercase() ?: "U",
                                     fontSize = 48.sp,
                                     fontWeight = FontWeight.Normal,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
 
@@ -133,7 +134,7 @@ fun ProfileView(
 
                             // Active Theme Card
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFB86C)), // Orange
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary), // Orange
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -144,14 +145,14 @@ fun ProfileView(
                                     Icon(
                                         imageVector = Icons.Default.Palette,
                                         contentDescription = "Active Theme",
-                                        tint = Color(0xFF222B45)
+                                        tint = MaterialTheme.colorScheme.onPrimary
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = "Active Theme",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF222B45),
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
@@ -159,7 +160,7 @@ fun ProfileView(
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Normal,
                                         textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
-                                        color = Color(0xFF222B45)
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
                             }
@@ -168,7 +169,7 @@ fun ProfileView(
 
                             // Profile Information Card
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFB86C)),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(24.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -184,13 +185,13 @@ fun ProfileView(
                                             text = "Profile Information",
                                             fontSize = 20.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF222B45)
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                         Text(
                                             text = "Edit",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF222B45)
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
 
@@ -212,12 +213,11 @@ fun ProfileView(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(
                                         brush = Brush.horizontalGradient(
-                                            colors = listOf(Color(0xFF66BB6A), Color(0xFFFFCC80)) // Green to Orange
+                                            colors = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primary) // Green to Orange
                                         )
                                     )
                                     .clickable { 
-                                        // Update this with actual route later
-                                        // navController.navigate("themeshop") 
+                                        navController.navigate(AppView.ThemeShop.name) 
                                     }
                                     .padding(horizontal = 24.dp),
                                 contentAlignment = Alignment.CenterStart
@@ -231,7 +231,7 @@ fun ProfileView(
                                         Icon(
                                             imageVector = Icons.Outlined.ShoppingBag,
                                             contentDescription = "Theme Shop",
-                                            tint = Color.White,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
                                             modifier = Modifier.size(32.dp)
                                         )
                                         Spacer(modifier = Modifier.width(16.dp))
@@ -239,7 +239,7 @@ fun ProfileView(
                                             text = "Theme Shop",
                                             fontSize = 20.sp,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
                                     
@@ -253,7 +253,7 @@ fun ProfileView(
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
                                             contentDescription = "Go to Shop",
-                                            tint = Color.White
+                                            tint = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
                                 }
@@ -273,20 +273,20 @@ fun ProfileField(label: String, value: String) {
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF222B45)
+            color = MaterialTheme.colorScheme.onPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFFFE3A3).copy(alpha = 0.5f))
+                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
                 .padding(vertical = 12.dp, horizontal = 16.dp)
         ) {
             Text(
                 text = value,
                 fontSize = 14.sp,
-                color = Color(0xFF222B45)
+                color = MaterialTheme.colorScheme.onPrimary
             )
         }
     }

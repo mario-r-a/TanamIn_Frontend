@@ -75,15 +75,15 @@ fun StartQuizView(
         )
     } else {
         val topGradient = Brush.verticalGradient(
-            colors = listOf(Color(0xFFfeac57), Color(0xFFffca91), Color.White),
+            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surface),
             startY = 0f,
-            endY = 400f
+            endY = 520f
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             // ... (Box untuk gradient tidak berubah)
             Box(
@@ -104,7 +104,7 @@ fun StartQuizView(
                 }
                 !errorMessage.isNullOrBlank() -> {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text("Error: $errorMessage", color = Color.Red)
+                        Text("Error: $errorMessage", color = MaterialTheme.colorScheme.error)
                     }
                 }
                 currentQuestion != null -> {
@@ -123,16 +123,16 @@ fun StartQuizView(
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.Start
                         ) {
-                            Text(text = "Level $levelId", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF222B45), modifier = Modifier.padding(start = 44.dp))
+                            Text(text = "Level $levelId", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(start = 44.dp))
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = levelName, fontSize = 14.sp, color = Color(0xFF222B45))
+                            Text(text = levelName, fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground)
                             Spacer(modifier = Modifier.height(20.dp))
-                            Text(text = currentQuestion.question, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF222B45))
+                            Text(text = currentQuestion.question, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(text = "Select the correct answer", fontSize = 12.sp, color = Color(0xFF222B45))
+                            Text(text = "Select the correct answer", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
                             Spacer(modifier = Modifier.height(80.dp))
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Icon(imageVector = Icons.Default.AccountBalance, contentDescription = "Investment", tint = Color(0xFFd3842f), modifier = Modifier.size(64.dp))
+                                Icon(imageVector = Icons.Default.AccountBalance, contentDescription = "Investment", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(64.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -147,12 +147,12 @@ fun StartQuizView(
                             options.forEachIndexed { idx, option ->
                                 val isSelected = selectedIndex == idx
                                 val bg = when {
-                                    submitted && isCorrect == true && isSelected -> Color(0xFF8CD87D)
-                                    submitted && isCorrect == false && isSelected -> Color(0xFFFFEBEE)
-                                    isSelected -> Color(0xFFFFF0D9)
-                                    else -> Color.White
+                                    submitted && isCorrect == true && isSelected -> Color(0xFF8CD87D) // Keep success color static or map to custom success color
+                                    submitted && isCorrect == false && isSelected -> MaterialTheme.colorScheme.errorContainer
+                                    isSelected -> MaterialTheme.colorScheme.primaryContainer
+                                    else -> MaterialTheme.colorScheme.surface
                                 }
-                                val strokeColor = if (isSelected) Color(0xFFd3842f) else Color.LightGray.copy(alpha = 0.6f)
+                                val strokeColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.6f)
 
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
@@ -174,7 +174,7 @@ fun StartQuizView(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Text(text = option, fontSize = 12.sp, color = Color(0xFF222B45))
+                                        Text(text = option, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }
@@ -184,7 +184,7 @@ fun StartQuizView(
                             Button(
                                 onClick = { viewModel.submitAnswer() },
                                 enabled = selectedIndex != null && !submitted,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFd3842f)),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(44.dp),
@@ -333,7 +333,7 @@ fun QuizResultView(
             text = "Quiz Completed!",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF222B45)
+            color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -357,7 +357,7 @@ fun QuizResultView(
             Icon(
                 imageVector = Icons.Default.Paid,
                 contentDescription = "Coins",
-                tint = Color(0xFFFFB86C),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -383,7 +383,7 @@ fun QuizResultView(
         // Tombol Kembali ke Course
         Button(
             onClick = onBackToCourse,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFd3842f)),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)

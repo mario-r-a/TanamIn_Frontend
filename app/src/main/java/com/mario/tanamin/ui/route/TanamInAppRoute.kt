@@ -1,12 +1,11 @@
 package com.mario.tanamin.ui.route
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -15,14 +14,14 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -41,14 +40,17 @@ import com.mario.tanamin.ui.view.WalletView
 import com.mario.tanamin.ui.view.ProfileView
 import com.mario.tanamin.ui.view.PocketDetailView
 import com.mario.tanamin.ui.view.StartQuizView
-import com.mario.tanamin.ui.viewmodel.StartQuizViewModel
+import com.mario.tanamin.ui.view.ThemeShopScreen
+import com.mario.tanamin.ui.viewmodel.AppViewModel
 
 enum class AppView(val title: String, val icon: ImageVector? = null) {
     Login("Login"),
     Home("Home", Icons.Filled.Home),
     Wallet("Wallet", Icons.Filled.AccountBalanceWallet),
     Course("Course", Icons.Filled.Map),
-    Profile("Profile", Icons.Filled.Person)
+    Profile("Profile", Icons.Filled.Person),
+    ThemeShop("ThemeShop", null)
+
 }
 
 data class BottomNavItem(val view: AppView, val label: String)
@@ -57,7 +59,8 @@ data class BottomNavItem(val view: AppView, val label: String)
 fun MyBottomNavBar(
     navController: NavHostController,
     currentDestination: NavDestination?,
-    items: List<BottomNavItem>
+    items: List<BottomNavItem>,
+    modifier: Modifier = Modifier
 ) {
     // Logic: Bottom bar hanya muncul jika route saat ini ada di dalam list bottomNavItems
     // (Artinya: Login tidak akan menampilkan bottom bar)
@@ -107,23 +110,20 @@ fun TanamInAppRoute() {
         BottomNavItem(AppView.Profile, "Profile")
     )
 
-    // Var untuk menampung state ViewModel
-    var isQuizFinished = false
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            bottomBar = {
-                MyBottomNavBar(
-                    navController = navController,
-                    currentDestination = currentDestination,
-                    items = bottomNavItems
-                )
-            }
-        ) { innerPadding ->
+    Scaffold(
+        bottomBar = {
+            MyBottomNavBar(
+                navController = navController,
+                currentDestination = currentDestination,
+                items = bottomNavItems
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
             NavHost(
                 modifier = Modifier.padding(innerPadding),
                 navController = navController,
-                startDestination = AppView.Login.name // Start di Login
+                startDestination = AppView.Login.name,
             ) {
                 composable(route = AppView.Login.name) {
                     LoginView(
@@ -156,7 +156,6 @@ fun TanamInAppRoute() {
                     )
                 }
                 composable(
-                    //route = "Quiz/{levelId}", coba-coba ganti
                     route = "Quiz/{levelId}/{levelName}",
                     arguments = listOf(
                         navArgument("levelId") { type = NavType.IntType },
@@ -173,23 +172,23 @@ fun TanamInAppRoute() {
                     )
                 }
             }
-        }
 
-        // Floating back button for PocketDetail and StartQuiz view
-        if (isPocketDetailView || isStartQuizView) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp, top = 60.dp)
-                    .size(40.dp)
-                    .background(Color.White, shape = CircleShape)
-                    .clickable { navController.popBackStack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFFFFB86C)
-                )
+            // Floating back button for PocketDetail and StartQuiz view
+            if (isPocketDetailView || isStartQuizView) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp, top = 60.dp)
+                        .size(40.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .clickable { navController.popBackStack() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
