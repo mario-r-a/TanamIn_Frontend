@@ -434,7 +434,8 @@ fun ActionButton(text: String, icon: ImageVector, modifier: Modifier = Modifier,
         modifier = modifier
             .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.secondary),
+            .background(MaterialTheme.colorScheme.secondary)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
