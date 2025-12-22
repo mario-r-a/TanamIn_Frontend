@@ -14,6 +14,9 @@ class TanamInContainer {
     companion object {
         val BASE_URL = "http://10.0.2.2:3000/"
 
+//         PUNYA MARIO:
+//         val BASE_URL = "http://192.168.1.148:3000/"
+
         // Interceptor that attaches Authorization header if token exists in InMemorySessionHolder
         private val authInterceptor = Interceptor { chain ->
             val original = chain.request()

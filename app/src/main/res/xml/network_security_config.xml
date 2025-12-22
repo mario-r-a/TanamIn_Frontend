@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+<!--    INI DEFAULT KALAU PAKAI ANDROID EMULATOR-->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
+<!--    KALAU MISAL PAKAI IP ADDRESS SELAIN ANDROID EMULATOR, NYALAIN YG BAWAH & COMMENT YANG ATAS-->
+<!--    <base-config cleartextTrafficPermitted="true" />-->
 </network-security-config>
 
