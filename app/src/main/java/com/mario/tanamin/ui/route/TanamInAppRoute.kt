@@ -1,11 +1,12 @@
 package com.mario.tanamin.ui.route
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -14,14 +15,14 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -40,13 +41,14 @@ import com.mario.tanamin.ui.view.WalletView
 import com.mario.tanamin.ui.view.ProfileView
 import com.mario.tanamin.ui.view.PocketDetailView
 import com.mario.tanamin.ui.view.StartQuizView
+import com.mario.tanamin.ui.viewmodel.StartQuizViewModel
 
-enum class AppView(val icon: ImageVector? = null) {
-    Login(null),
-    Home(Icons.Filled.Home),
-    Wallet(Icons.Filled.AccountBalanceWallet),
-    Course(Icons.Filled.Map),
-    Profile(Icons.Filled.Person)
+enum class AppView(val title: String, val icon: ImageVector? = null) {
+    Login("Login"),
+    Home("Home", Icons.Filled.Home),
+    Wallet("Wallet", Icons.Filled.AccountBalanceWallet),
+    Course("Course", Icons.Filled.Map),
+    Profile("Profile", Icons.Filled.Person)
 }
 
 data class BottomNavItem(val view: AppView, val label: String)
@@ -55,71 +57,29 @@ data class BottomNavItem(val view: AppView, val label: String)
 fun MyBottomNavBar(
     navController: NavHostController,
     currentDestination: NavDestination?,
-    items: List<BottomNavItem>,
-    modifier: Modifier = Modifier
+    items: List<BottomNavItem>
 ) {
     // Logic: Bottom bar hanya muncul jika route saat ini ada di dalam list bottomNavItems
     // (Artinya: Login tidak akan menampilkan bottom bar)
     val showBottomBar = items.any { it.view.name == currentDestination?.route }
 
     if (showBottomBar) {
-        // Floating pill-style bottom bar with shadow and rounded corners
-        // Keep navigation logic identical to previous implementation
-        val selectedColor = Color(0xFFFFB86C) // accent orange
-        val unselectedColor = Color(0xFFBDBDBD) // muted grey
-        Surface(
-            shape = RoundedCornerShape(36.dp),
-            color = Color(0xFFF7F6F2),
-            tonalElevation = 8.dp,
-            shadowElevation = 10.dp,
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .height(84.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEach { item ->
-                    val selected = currentDestination?.hierarchy?.any { it.route == item.view.name } == true
-                    val iconTint by animateColorAsState(if (selected) selectedColor else unselectedColor)
-                    val labelColor by animateColorAsState(if (selected) selectedColor else Color(0xFF7A7A7A))
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                navController.navigate(item.view.name) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+        NavigationBar {
+            items.forEach { item ->
+                NavigationBarItem(
+                    icon = { Icon(item.view.icon!!, contentDescription = item.label) },
+                    label = { Text(item.label) },
+                    selected = currentDestination?.hierarchy?.any { it.route == item.view.name } == true,
+                    onClick = {
+                        navController.navigate(item.view.name) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = item.view.icon ?: Icons.Filled.Home,
-                            contentDescription = item.label,
-                            tint = iconTint,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = item.label,
-                            fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = labelColor
-                        )
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
-                }
+                )
             }
         }
     }
@@ -147,20 +107,23 @@ fun TanamInAppRoute() {
         BottomNavItem(AppView.Profile, "Profile")
     )
 
-    Scaffold(
-        bottomBar = {
-            MyBottomNavBar(
-                navController = navController,
-                currentDestination = currentDestination,
-                items = bottomNavItems
-            )
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+    // Var untuk menampung state ViewModel
+    var isQuizFinished = false
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                MyBottomNavBar(
+                    navController = navController,
+                    currentDestination = currentDestination,
+                    items = bottomNavItems
+                )
+            }
+        ) { innerPadding ->
             NavHost(
                 modifier = Modifier.padding(innerPadding),
                 navController = navController,
-                startDestination = AppView.Login.name,
+                startDestination = AppView.Login.name // Start di Login
             ) {
                 composable(route = AppView.Login.name) {
                     LoginView(
@@ -193,6 +156,7 @@ fun TanamInAppRoute() {
                     )
                 }
                 composable(
+                    //route = "Quiz/{levelId}", coba-coba ganti
                     route = "Quiz/{levelId}/{levelName}",
                     arguments = listOf(
                         navArgument("levelId") { type = NavType.IntType },
@@ -209,23 +173,23 @@ fun TanamInAppRoute() {
                     )
                 }
             }
+        }
 
-            // Floating back button for PocketDetail and StartQuiz view
-            if (isPocketDetailView || isStartQuizView) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 16.dp, top = 60.dp)
-                        .size(40.dp)
-                        .background(Color.White, shape = CircleShape)
-                        .clickable { navController.popBackStack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color(0xFFFFB86C)
-                    )
-                }
+        // Floating back button for PocketDetail and StartQuiz view
+        if (isPocketDetailView || isStartQuizView) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 16.dp, top = 60.dp)
+                    .size(40.dp)
+                    .background(Color.White, shape = CircleShape)
+                    .clickable { navController.popBackStack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color(0xFFFFB86C)
+                )
             }
         }
     }
