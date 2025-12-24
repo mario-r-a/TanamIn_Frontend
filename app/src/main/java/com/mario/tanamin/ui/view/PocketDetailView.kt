@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.mario.tanamin.data.dto.DataTransactionResponse
 import com.mario.tanamin.ui.viewmodel.PocketDetailViewModel
 import com.mario.tanamin.ui.model.PocketModel
 import java.text.NumberFormat
@@ -30,6 +31,10 @@ import java.util.Locale
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +49,7 @@ fun PocketDetailView(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableTargets by viewModel.availableTargets.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     // coroutineScope not needed here (snackbar uses LaunchedEffect)
@@ -59,6 +65,7 @@ fun PocketDetailView(
 
     LaunchedEffect(pocketId) {
         viewModel.loadPocket(pocketId)
+        viewModel.loadTransactions(pocketId)
     }
 
     Box(
@@ -108,6 +115,7 @@ fun PocketDetailView(
                 } else if (pocket != null) {
                     PocketDetailContent(
                         pocket = pocket!!,
+                        transactions = transactions,
                         onMoveClicked = { showMoveDialog = true },
                         onSellClicked = onSell,
                         onBuyClicked = onBuy,
@@ -135,6 +143,7 @@ fun PocketDetailView(
 @Composable
 private fun PocketDetailContent(
     pocket: PocketModel,
+    transactions: List<DataTransactionResponse>, // Use correct type
     onMoveClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onBuyClicked: () -> Unit,
@@ -315,19 +324,30 @@ private fun PocketDetailContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding) // ensure scaffold insets are respected for the scrollable area
+                .padding(contentPadding)
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // TODO: Replace with actual transactions from ViewModel
-            items(4) { _ ->
-                TransactionHistoryItem(
-                    description = "Beli Saham BBCA - 3 lot x Rp 30.000",
-                    date = "10 Des 2025, 13:04",
-                    amount = "Rp. 30.000",
-                    label = "Buy"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            if (transactions.isEmpty()) {
+                item {
+                    Text(
+                        text = "No transactions found.",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 24.dp)
+                    )
+                }
+            } else {
+                items(transactions.size) { index ->
+                    val transaction = transactions[index]
+                    TransactionHistoryItem(
+                        description = transaction.action,
+                        date = formatTransactionDate(transaction.date),
+                        amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(transaction.nominal),
+                        label = transaction.name
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         }
     }
@@ -508,6 +528,22 @@ fun TransactionHistoryItem(
                     color = Color(0xFF222B45)
                 )
             }
+        }
+    }
+}
+
+// Helper to format date string to a user-friendly format
+private fun formatTransactionDate(dateString: String): String {
+    // Try parsing as ISO 8601 with or without zone
+    return try {
+        val zoned = ZonedDateTime.parse(dateString)
+        zoned.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"))
+    } catch (e: DateTimeParseException) {
+        try {
+            val local = LocalDateTime.parse(dateString)
+            local.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"))
+        } catch (e: Exception) {
+            dateString // fallback to original
         }
     }
 }

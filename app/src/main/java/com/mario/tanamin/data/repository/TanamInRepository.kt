@@ -19,6 +19,8 @@ import com.mario.tanamin.ui.model.PocketModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import retrofit2.Response
+import com.mario.tanamin.data.dto.TransactionsResponse
+import com.mario.tanamin.data.dto.DataTransactionResponse
 
 class TanamInRepository(private val tanamInService: TanamInService) {
 
@@ -227,6 +229,25 @@ class TanamInRepository(private val tanamInService: TanamInService) {
         } catch (e: Exception) {
             Log.e("TanamInRepository", "updateLevel exception", e)
             Result.failure(e)
+        }
+    }
+
+    suspend fun getTransactionsByPocket(pocketId: Int): Result<List<DataTransactionResponse>> {
+        return try {
+            val response = tanamInService.getTransactionsByPocket(pocketId)
+            if (!response.isSuccessful) {
+                Log.d("TanamInRepository", "getTransactionsByPocket HTTP "+response.code()+": "+response.message())
+                return Result.failure(Exception("HTTP "+response.code()+": "+response.message()))
+            }
+            val body = response.body()
+            if (body == null) {
+                Log.d("TanamInRepository", "getTransactionsByPocket empty body")
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.data)
+        } catch (e: Exception) {
+            Log.e("TanamInRepository", "getTransactionsByPocket exception", e)
+            return Result.failure(e)
         }
     }
 }

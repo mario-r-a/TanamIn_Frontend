@@ -11,6 +11,7 @@ import com.mario.tanamin.data.dto.UpdatePocketResponse
 import com.mario.tanamin.data.dto.QuestionResponse
 import com.mario.tanamin.data.dto.UpdateLevelRequest
 import com.mario.tanamin.data.dto.UpdateLevelResponse
+import com.mario.tanamin.data.dto.TransactionsResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -56,4 +57,9 @@ interface TanamInService {
         @Path("levelId") levelId: Int,
         @Body request: UpdateLevelRequest
     ): Response<UpdateLevelResponse>
+
+    @GET("/api/transactions/pocket/{pocketId}")
+    suspend fun getTransactionsByPocket(
+        @Path("pocketId") pocketId: Int
+    ): Response<TransactionsResponse>
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mario.tanamin.data.container.TanamInContainer
 import com.mario.tanamin.data.dto.DataPocketUpdate
+import com.mario.tanamin.data.dto.DataTransactionResponse
 import com.mario.tanamin.data.repository.TanamInRepository
 import com.mario.tanamin.ui.model.PocketModel
 import kotlinx.coroutines.flow.*
@@ -35,6 +36,10 @@ class PocketDetailViewModel(
     // Simple one-shot message flow to notify UI of results (success/failure).
     private val _messageFlow = MutableSharedFlow<String>()
     val messageFlow: SharedFlow<String> = _messageFlow.asSharedFlow()
+
+    // Transactions state for this pocket
+    private val _transactions = MutableStateFlow<List<DataTransactionResponse>>(emptyList())
+    val transactions: StateFlow<List<DataTransactionResponse>> = _transactions.asStateFlow()
 
     // TODO: Add transactions list state when backend is ready
     // private val _transactions = MutableStateFlow<List<TransactionModel>>(emptyList())
@@ -207,8 +212,28 @@ class PocketDetailViewModel(
         }
     }
 
+    /**
+     * Loads transactions for the given pocketId and updates state.
+     */
     fun loadTransactions(pocketId: Int) {
-
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val result = repository.getTransactionsByPocket(pocketId)
+                result.onSuccess { txs ->
+                    _transactions.value = txs
+                }.onFailure { ex ->
+                    _error.value = ex.message ?: "Failed to load transactions"
+                    _transactions.value = emptyList()
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to load transactions"
+                _transactions.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun clear() {
