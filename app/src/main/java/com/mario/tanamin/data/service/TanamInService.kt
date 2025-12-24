@@ -82,4 +82,9 @@ interface TanamInService {
 
     @GET("/api/themes/active")
     suspend fun getActiveTheme(): Response<SingleThemeResponse>
+
+    @PATCH("/api/profile")
+    suspend fun updateProfile(
+        @Body request: com.mario.tanamin.data.dto.UpdateProfileRequest
+    ): Response<ProfileResponse>
 }

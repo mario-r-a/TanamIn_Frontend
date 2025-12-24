@@ -40,4 +40,20 @@ class ProfileViewModel : ViewModel() {
             }
         }
     }
+
+    fun updateProfile(name: String, email: String, password: String?) {
+        viewModelScope.launch {
+            // Keep the current data visible if possible or show loading overlay?
+            // For now, let's just trigger loading state or maybe a specific updating state?
+            // Re-using Loading might fully replace the UI, which is fine.
+            _uiState.value = ProfileUiState.Loading
+            
+            val result = repository.updateProfile(name, email, password)
+            result.onSuccess { profile ->
+                _uiState.value = ProfileUiState.Success(profile)
+            }.onFailure { exception ->
+                _uiState.value = ProfileUiState.Error(exception.message ?: "Update failed")
+            }
+        }
+    }
 }

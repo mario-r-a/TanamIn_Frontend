@@ -90,7 +90,9 @@ fun MyBottomNavBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TanamInAppRoute() {
+fun TanamInAppRoute(
+    appViewModel: AppViewModel = viewModel() // Default to new instance if not provided, but usually provided by Activity 
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -144,6 +146,13 @@ fun TanamInAppRoute() {
                 }
                 composable(route = AppView.Profile.name) {
                     ProfileView(navController = navController)
+                }
+                composable(route = AppView.ThemeShop.name) {
+                    // Use the existing appViewModel passed to TanamInAppRoute
+                    ThemeShopScreen(
+                        navController = navController,
+                        appViewModel = appViewModel 
+                    )
                 }
                 composable(
                     route = "PocketDetail/{pocketId}",

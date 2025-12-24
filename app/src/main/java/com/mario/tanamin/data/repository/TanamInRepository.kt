@@ -307,4 +307,21 @@ class TanamInRepository(private val tanamInService: TanamInService) {
             emit(Result.failure(e))
         }
     }
+
+    suspend fun updateProfile(name: String, email: String, password: String?): Result<com.mario.tanamin.data.dto.DataProfile> {
+        return try {
+            val request = com.mario.tanamin.data.dto.UpdateProfileRequest(name, email, password)
+            val response = tanamInService.updateProfile(request)
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.`data`)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

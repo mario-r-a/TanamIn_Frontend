@@ -15,6 +15,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,7 +44,7 @@ fun ProfileView(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Top Gradient matching WalletView but adapted if needed (User image looks similar)
+    // Top Gradient matching WalletView but adapted if needed
     val topGradient = Brush.verticalGradient(
         colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surface),
         startY = 0f,
@@ -110,6 +116,20 @@ fun ProfileView(
                     }
                     is ProfileUiState.Success -> {
                         val profile = state.profile
+                        
+                        var isEditing by remember { mutableStateOf(false) }
+                        var editName by remember { mutableStateOf(profile.name) }
+                        var editEmail by remember { mutableStateOf(profile.email) }
+                        var editPassword by remember { mutableStateOf("") }
+
+                        // Reset fields when profile changes or edit mode is toggled off? 
+                        // Actually if profile updates, we should update fields.
+                        LaunchedEffect(profile) {
+                             editName = profile.name
+                             editEmail = profile.email
+                             editPassword = ""
+                        }
+
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
@@ -134,7 +154,7 @@ fun ProfileView(
 
                             // Active Theme Card
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary), // Orange
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -156,7 +176,7 @@ fun ProfileView(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
-                                        text = "Default", // In future map profile.activeThemeId to Name
+                                        text = "Default", // Future: map activeThemeId to Name
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Normal,
                                         textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
@@ -188,18 +208,68 @@ fun ProfileView(
                                             color = MaterialTheme.colorScheme.onPrimary
                                         )
                                         Text(
-                                            text = "Edit",
+                                            text = if (isEditing) "Cancel" else "Edit",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onPrimary
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier
+                                                .clickable { 
+                                                    if (isEditing) {
+                                                        // Cancel edits
+                                                        editName = profile.name
+                                                        editEmail = profile.email
+                                                        editPassword = ""
+                                                        isEditing = false
+                                                    } else {
+                                                        isEditing = true
+                                                    }
+                                                }
+                                                .background(Color.Transparent) // Touch target
                                         )
                                     }
 
                                     Spacer(modifier = Modifier.height(16.dp))
 
-                                    ProfileField(label = "Name", value = profile.name)
+                                    ProfileField(
+                                        label = "Name", 
+                                        value = editName, 
+                                        isEditing = isEditing,
+                                        onValueChange = { editName = it }
+                                    )
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    ProfileField(label = "Email", value = profile.email)
+                                    ProfileField(
+                                        label = "Email", 
+                                        value = editEmail, 
+                                        isEditing = isEditing,
+                                        onValueChange = { editEmail = it }
+                                    )
+                                    
+                                    if (isEditing) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        ProfileField(
+                                            label = "New Password", 
+                                            value = editPassword, 
+                                            isEditing = true,
+                                            onValueChange = { editPassword = it },
+                                            isPassword = true
+                                        )
+
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        
+                                        Button(
+                                            onClick = {
+                                                viewModel.updateProfile(editName, editEmail, if (editPassword.isBlank()) null else editPassword)
+                                                isEditing = false
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.secondary,
+                                                contentColor = MaterialTheme.colorScheme.onSecondary
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Save Changes")
+                                        }
+                                    }
                                 }
                             }
 
@@ -213,7 +283,7 @@ fun ProfileView(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(
                                         brush = Brush.horizontalGradient(
-                                            colors = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primary) // Green to Orange
+                                            colors = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primary)
                                         )
                                     )
                                     .clickable { 
@@ -266,8 +336,15 @@ fun ProfileView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileField(label: String, value: String) {
+fun ProfileField(
+    label: String, 
+    value: String,
+    isEditing: Boolean = false,
+    isPassword: Boolean = false,
+    onValueChange: (String) -> Unit = {}
+) {
     Column {
         Text(
             text = label,
@@ -276,18 +353,40 @@ fun ProfileField(label: String, value: String) {
             color = MaterialTheme.colorScheme.onPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
-                .padding(vertical = 12.dp, horizontal = 16.dp)
-        ) {
-            Text(
-                text = value,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onPrimary
+        
+        if (isEditing) {
+            TextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp)),
+                visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                    focusedTextColor = MaterialTheme.colorScheme.onSecondary,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSecondary,
+                    cursorColor = MaterialTheme.colorScheme.onSecondary,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                singleLine = true
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
+                    .padding(vertical = 12.dp, horizontal = 16.dp)
+            ) {
+                Text(
+                    text = if (isPassword) "••••••••" else value,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     }
 }
