@@ -125,11 +125,19 @@ fun ThemeItem(
     val textColor = safeParseColor(theme.text, Color.Black)
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isActive) 8.dp else 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.8f)
+            .aspectRatio(0.75f)
+            .border(
+                width = if (isActive) 2.dp else 0.dp,
+                color = if (isActive) MaterialTheme.colorScheme.primary else Color.Transparent,
+                shape = RoundedCornerShape(20.dp)
+            )
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -140,22 +148,47 @@ fun ThemeItem(
                     .weight(1f)
                     .fillMaxWidth()
                     .background(backgroundColor)
-                    .padding(16.dp),
+                    .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Mock UI for preview
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                 // Mock UI for preview
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // App Bar Mock
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .background(primaryColor, CircleShape)
+                            .fillMaxWidth(0.8f)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(primaryColor)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Profile Icon Mock
                     Box(
                         modifier = Modifier
-                            .height(12.dp)
-                            .width(80.dp)
-                            .background(textColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                            .size(32.dp)
+                            .background(primaryColor, CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Content Lines
+                    Box(
+                        modifier = Modifier
+                            .height(8.dp)
+                            .width(60.dp)
+                            .background(textColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(8.dp)
+                            .width(40.dp)
+                            .background(textColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                     )
                 }
                 
@@ -163,10 +196,16 @@ fun ThemeItem(
                      Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .background(Color.Green, CircleShape)
-                            .padding(4.dp)
+                            .offset(x = 8.dp, y = (-8).dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(bottomStart = 8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                         Icon(Icons.Default.Check, contentDescription = "Active", tint = Color.White, modifier = Modifier.size(16.dp))
+                         Text(
+                             text = "Equipped", 
+                             fontSize = 10.sp, 
+                             color = MaterialTheme.colorScheme.onPrimary,
+                             fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -175,23 +214,26 @@ fun ThemeItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)) // Subtle footer
                     .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (theme.unlocked) {
                     if (isActive) {
-                        Button(
+                        OutlinedButton(
                             onClick = {},
                             enabled = false,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
-                            modifier = Modifier.fillMaxWidth().height(36.dp)
+                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Equipped", fontSize = 12.sp)
+                            Text("Active", fontSize = 12.sp)
                         }
                     } else {
                         Button(
                             onClick = onEquip,
-                            modifier = Modifier.fillMaxWidth().height(36.dp)
+                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                            shape = RoundedCornerShape(12.dp),
+                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Equip", fontSize = 12.sp)
                         }
@@ -199,13 +241,14 @@ fun ThemeItem(
                 } else {
                     Button(
                         onClick = onBuy,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)), // Gold/Orange for buy
-                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9F1C)), // Orange
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("${theme.price}", fontSize = 12.sp)
+                            Text("${theme.price}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

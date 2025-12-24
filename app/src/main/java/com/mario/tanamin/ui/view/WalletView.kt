@@ -243,63 +243,164 @@ private fun InvestmentWalletView(totalInvestedFormatted: String, onAddBalanceCli
 }
 
 @Composable
-fun InvestmentWalletCard(formattedTotal: String) {
-    Box(
+fun MainWalletCard(mainTotal: String) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.CenterStart
+            .height(110.dp),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
     ) {
-        // Decorative circles - matching the design
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .offset(x = (-16).dp, y = 60.dp)
-                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-        ) {}
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .offset(x = 220.dp, y = (-18).dp)
-                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-        ) {}
-        Column(
-            modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                text = "Investment Wallet",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+            // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
+                        )
+                    )
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Rp$formattedTotal",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
+            
+            // Decorative circles
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .offset(x = (-20).dp, y = (-20).dp)
+                    .background(Color.White.copy(alpha = 0.15f), shape = CircleShape)
+            ) {}
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 20.dp, y = 20.dp)
+                    .background(Color.White.copy(alpha = 0.1f), shape = CircleShape)
+            ) {}
+            
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .align(Alignment.CenterStart)
+            ) {
+                Text(
+                    text = "Main Wallet",
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Rp$mainTotal",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
+@Composable
+fun InvestmentWalletCard(formattedTotal: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(110.dp),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+             // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) // Simple gradient
+                            )
+                        )
+                    )
+            )
+            // Decorative circles - matching the design
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = 10.dp, y = (-10).dp)
+                    .background(Color.White.copy(alpha = 0.15f), shape = CircleShape)
+            ) {}
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-10).dp, y = 30.dp)
+                    .background(Color.White.copy(alpha = 0.1f), shape = CircleShape)
+            ) {}
+            
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .align(Alignment.CenterStart)
+            ) {
+                Text(
+                    text = "Investment Wallet",
+                    color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.9f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Rp$formattedTotal",
+                    color = MaterialTheme.colorScheme.onSecondary,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun PocketsGridFromModels(pockets: List<PocketModel>, navController: NavController) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        val rows: List<List<PocketModel>> = pockets.chunked(2)
-        rows.forEach { pair: List<PocketModel> ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                PocketCardFromModel(pair[0], Modifier.weight(1f), navController)
-                if (pair.size > 1) {
-                    PocketCardFromModel(pair[1], Modifier.weight(1f), navController)
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
+    if (pockets.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No pockets found",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                fontSize = 14.sp
+            )
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            val rows: List<List<PocketModel>> = pockets.chunked(2)
+            rows.forEach { pair: List<PocketModel> ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    PocketCardFromModel(pair[0], Modifier.weight(1f), navController)
+                    if (pair.size > 1) {
+                        PocketCardFromModel(pair[1], Modifier.weight(1f), navController)
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -307,67 +408,9 @@ fun PocketsGridFromModels(pockets: List<PocketModel>, navController: NavControll
 }
 
 @Composable
-fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navController: NavController) {
-    val formatted = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(data.total)
-    Box(
-        modifier = modifier
-            .height(120.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.primary)
-            .clickable { navController.navigate("PocketDetail/${data.id}") },
-        contentAlignment = Alignment.TopStart
-    ) {
-        // Decorative circle
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .align(Alignment.BottomEnd)
-                .offset(x = 8.dp, y = 8.dp)
-                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-        ) {}
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, top = 16.dp, bottom = 12.dp, end = 12.dp),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Top
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onPrimary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = data.name,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-            )
-            Text(
-                text = "Rp$formatted",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
 fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -380,50 +423,88 @@ fun TabPill(text: String, selected: Boolean, onClick: () -> Unit) {
             text = text,
             color = fg,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 16.sp
+            fontSize = 14.sp
         )
     }
 }
 
 @Composable
-fun MainWalletCard(mainTotal: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.CenterStart
+fun PocketCardFromModel(data: PocketModel, modifier: Modifier = Modifier, navController: NavController) {
+    val formatted = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(data.total)
+    
+    Card(
+        modifier = modifier
+            .height(140.dp) // Slightly taller
+            .clickable { navController.navigate("PocketDetail/${data.id}") },
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) // Use variant for pockets
     ) {
-        // Decorative circles
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .offset(x = (-16).dp, y = 60.dp)
-                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-        ) {}
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .offset(x = 220.dp, y = (-18).dp)
-                .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-        ) {}
-        Column(
-            modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp)
-        ) {
-            Text(
-                text = "Main Wallet",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Background Gradient (subtle)
+             Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                MaterialTheme.colorScheme.primary
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(300f, 300f)
+                        )
+                    )
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Rp$mainTotal",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
+
+            // Decorative circle
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = 10.dp, y = (-10).dp)
+                    .background(Color.White.copy(alpha = 0.1f), shape = CircleShape)
+            ) {}
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                 Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                
+                Column {
+                    Text(
+                        text = data.name,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Rp$formatted",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
         }
     }
 }
