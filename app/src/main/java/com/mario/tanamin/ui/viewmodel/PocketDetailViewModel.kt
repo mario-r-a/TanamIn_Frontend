@@ -489,7 +489,20 @@ class PocketDetailViewModel(
                         }
                     }
                 }
-                _transactions.value = emptyList()
+                // Store raw transactions for Active Investments calculation
+                _transactions.value = txs.map { tx ->
+                    DataTransactionResponse(
+                        action = tx.action,
+                        date = tx.date,
+                        id = tx.id,
+                        name = tx.name,
+                        nominal = tx.nominal,
+                        pocketId = tx.pocketId,
+                        pricePerUnit = tx.pricePerUnit,
+                        toPocketId = tx.toPocketId,
+                        unitAmount = tx.unitAmount
+                    )
+                }
                 _uiTransactions.value = uiTxs
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to load transactions"

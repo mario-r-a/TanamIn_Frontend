@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import com.mario.tanamin.data.dto.DataPocketHistoryResponse
+import com.mario.tanamin.data.dto.DataTransactionResponse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +50,7 @@ fun PocketDetailView(
     val error by viewModel.error.collectAsState()
     val availableTargets by viewModel.availableTargets.collectAsState()
     val uiTransactions by viewModel.uiTransactions.collectAsState() // Use uiTransactions
+    val allTransactions by viewModel.transactions.collectAsState() // Collect the original transaction list
 
     val snackbarHostState = remember { SnackbarHostState() }
     // coroutineScope not needed here (snackbar uses LaunchedEffect)
@@ -116,6 +119,7 @@ fun PocketDetailView(
                     PocketDetailContent(
                         pocket = pocket!!,
                         transactions = uiTransactions, // Pass uiTransactions
+                        allTransactions = allTransactions, // Pass original transaction list
                         onMoveClicked = { showMoveDialog = true },
                         onWithdrawClicked = { showWithdrawDialog = true },
                         onSellClicked = onSell,
@@ -167,6 +171,7 @@ fun PocketDetailView(
 private fun PocketDetailContent(
     pocket: PocketModel,
     transactions: List<PocketTransactionModel>, // Use PocketTransactionModel
+    allTransactions: List<DataTransactionResponse>, // Use correct DTO type
     onMoveClicked: () -> Unit,
     onWithdrawClicked: () -> Unit,
     onSellClicked: () -> Unit,
@@ -179,11 +184,7 @@ private fun PocketDetailContent(
     val walletType = pocket.walletType.trim()
     val pocketNameLower = pocket.name.lowercase(Locale.getDefault())
     // Normalize name: remove non-alphanumeric, collapse spaces, lowercase for robust comparison
-    val normalizedName = pocket.name
-        .lowercase(Locale.getDefault())
-        .replace(Regex("[^a-z0-9\\s]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
+    // Remove unused normalizedName variable
 
     // Determine which button to show:
     // - Main => Move Money
@@ -379,6 +380,135 @@ private fun PocketDetailContent(
             }
         }
 
+        // --- Active Investments Section (only for active investment pocket) ---
+        val containsInvest = pocket.walletType.contains("invest", ignoreCase = true)
+        val pocketNameContainsActive = pocket.name.contains("active", ignoreCase = true)
+        val pocketNameContainsInactive = pocket.name.contains("inactive", ignoreCase = true)
+
+        Log.d("PocketDetailView", "=== Checking Active Investment Section ===")
+        Log.d("PocketDetailView", "Pocket ID: ${pocket.id}, Name: ${pocket.name}")
+        Log.d("PocketDetailView", "walletType: '${pocket.walletType}', isActive: ${pocket.isActive}")
+        Log.d("PocketDetailView", "containsInvest: $containsInvest, pocketNameContainsActive: $pocketNameContainsActive, pocketNameContainsInactive: $pocketNameContainsInactive")
+
+        // Only show in pockets that are Investment type, have isActive=true,
+        // AND the name contains "Active" but NOT "Inactive"
+        val isActiveInvestmentPocket = containsInvest && pocket.isActive && pocketNameContainsActive && !pocketNameContainsInactive
+        Log.d("PocketDetailView", "isActiveInvestmentPocket: $isActiveInvestmentPocket")
+
+        if (isActiveInvestmentPocket) {
+            Log.d("PocketDetailView", "=== Active Investment Pocket Detected - SHOWING SECTION ===")
+            Log.d("PocketDetailView", "Total transactions loaded: ${allTransactions.size}")
+
+            // Log all transactions for debugging
+            allTransactions.forEachIndexed { index, tx ->
+                Log.d("PocketDetailView", "Transaction $index: action=${tx.action}, name=${tx.name}, pocketId=${tx.pocketId}, toPocketId=${tx.toPocketId}, unitAmount=${tx.unitAmount}, nominal=${tx.nominal}")
+            }
+
+            // Filter transactions that are related to this pocket AND are Buy/Sell actions
+            val relevantTransactions = allTransactions.filter {
+                val isPocketRelated = it.pocketId == pocket.id || it.toPocketId == pocket.id
+                val isBuyOrSell = it.action.equals("Buy", ignoreCase = true) || it.action.equals("Sell", ignoreCase = true)
+                isPocketRelated && isBuyOrSell
+            }
+
+            Log.d("PocketDetailView", "Relevant Buy/Sell transactions for pocket ${pocket.id}: ${relevantTransactions.size}")
+            relevantTransactions.forEach { tx ->
+                Log.d("PocketDetailView", "  -> ${tx.action}: ${tx.name}, units=${tx.unitAmount}, nominal=${tx.nominal}")
+            }
+
+            // Group by investment name and calculate totals
+            val investments = relevantTransactions
+                .groupBy { it.name }
+                .mapNotNull { (investmentName, txs) ->
+                    Log.d("PocketDetailView", "Calculating for investment: $investmentName (${txs.size} transactions)")
+
+                    // Calculate total units: Buy adds units, Sell subtracts units
+                    val totalUnits = txs.sumOf { tx ->
+                        val units = tx.unitAmount.toLong()
+                        if (tx.action.equals("Buy", ignoreCase = true)) {
+                            Log.d("PocketDetailView", "  Buy: +$units units")
+                            units
+                        } else {
+                            Log.d("PocketDetailView", "  Sell: -$units units")
+                            -units
+                        }
+                    }
+
+                    // Calculate total investment value: Buy adds value, Sell subtracts value
+                    val totalPrice = txs.sumOf { tx ->
+                        val price = tx.nominal.toLong()
+                        if (tx.action.equals("Buy", ignoreCase = true)) price else -price
+                    }
+
+                    // Calculate average price per unit (only if we have units)
+                    val pricePerUnit = if (totalUnits > 0L) totalPrice / totalUnits else 0L
+
+                    Log.d("PocketDetailView", "  Result for $investmentName: totalUnits=$totalUnits, totalPrice=$totalPrice, pricePerUnit=$pricePerUnit")
+
+                    // Only include investments where we still own units
+                    if (totalUnits > 0L) {
+                        investmentName to Triple(totalUnits, totalPrice, pricePerUnit)
+                    } else {
+                        Log.d("PocketDetailView", "  Skipping $investmentName (no units owned)")
+                        null
+                    }
+                }
+
+            Log.d("PocketDetailView", "Total active investments to display: ${investments.size}")
+
+            if (investments.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Active Investments",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    investments.forEach { (investmentName, triple) ->
+                        ActiveInvestmentDisplay(
+                            name = investmentName,
+                            units = triple.first,
+                            totalPrice = triple.second,
+                            pricePerUnit = triple.third
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                // Show placeholder when no investments
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Active Investments",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = "No active investments yet. Buy investments from your inactive investment pocket.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         // Fixed History header (stays visible while list scrolls)
         Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp)) {
             Text(
@@ -419,6 +549,52 @@ private fun PocketDetailContent(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ActiveInvestmentDisplay(name: String, units: Long, totalPrice: Long, pricePerUnit: Long) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, shape = RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Units Owned: $units",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Price/Unit: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(pricePerUnit)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Total Value",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(totalPrice)}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
