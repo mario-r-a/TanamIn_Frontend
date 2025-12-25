@@ -234,6 +234,92 @@ class PocketDetailViewModel(
     }
 
     /**
+     * Withdraw money from the current pocket.
+     * Validates balance, updates the pocket via API, creates a transaction, and reloads data.
+     */
+    suspend fun withdrawMoneySuspend(amount: Long): Boolean {
+        val from = _pocket.value
+        if (from == null) {
+            _messageFlow.emit("Pocket not loaded")
+            return false
+        }
+        if (amount <= 0L) {
+            _messageFlow.emit("Amount must be greater than zero")
+            return false
+        }
+        if (from.total < amount) {
+            _messageFlow.emit("Insufficient balance")
+            return false
+        }
+
+        _isLoading.value = true
+        try {
+            // Optimistic update local pocket
+            val originalFrom = from
+            _pocket.value = from.copy(total = from.total - amount)
+
+            // Prepare patch for the pocket
+            val updatedPocketDto = DataPocketUpdate(
+                id = from.id,
+                isActive = from.isActive,
+                name = from.name,
+                total = (from.total - amount).toInt(),
+                userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull() ?: 0,
+                walletType = from.walletType
+            )
+
+            // Send PATCH for pocket
+            val resFrom = repository.updatePocket(updatedPocketDto)
+            if (resFrom.isFailure) {
+                _pocket.value = originalFrom
+                _messageFlow.emit("Failed to withdraw: ${resFrom.exceptionOrNull()?.message}")
+                return false
+            }
+
+            // Create transaction for the withdrawal
+            val withdrawTransaction = AddTransactionRequest(
+                action = "Withdraw",
+                name = "Withdraw",
+                nominal = amount.toInt(),
+                pocketId = from.id,
+                pricePerUnit = 1,
+                toPocketId = null,
+                unitAmount = amount.toInt()
+            )
+            val withdrawResult = repository.addTransaction(withdrawTransaction)
+            withdrawResult.onFailure { ex ->
+                _messageFlow.emit("Money withdrawn but failed to record transaction: ${ex.message}")
+                return false
+            }
+
+            // Reload the current pocket from server
+            val currentPocketId = from.id
+            val userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull()
+            if (userId != null) {
+                repository.getPocketsByUser(userId)
+                    .onSuccess { pockets ->
+                        val refreshedPocket = pockets.firstOrNull { it.id == currentPocketId }
+                        if (refreshedPocket != null) {
+                            _pocket.value = refreshedPocket
+                        }
+                    }
+            }
+
+            _messageFlow.emit("Withdrawn Rp$amount successfully")
+
+            // Reload transactions for this pocket to update the list immediately
+            loadTransactions(currentPocketId)
+
+            return true
+        } catch (e: Exception) {
+            _messageFlow.emit("Withdraw failed: ${e.message}")
+            return false
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    /**
      * Loads transactions for the given pocketId and updates state.
      * Enriches transaction data for UI display, especially for transfer transactions.
      */
@@ -326,4 +412,3 @@ data class PocketTransactionModel(
     val date: String,
     val otherPocketName: String? // For transfers, the other pocket's name
 )
-

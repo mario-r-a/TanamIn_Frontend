@@ -60,6 +60,7 @@ fun PocketDetailView(
     }
 
     var showMoveDialog by remember { mutableStateOf(false) }
+    var showWithdrawDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(pocketId) {
         viewModel.loadPocket(pocketId)
@@ -115,6 +116,7 @@ fun PocketDetailView(
                         pocket = pocket!!,
                         transactions = uiTransactions, // Pass uiTransactions
                         onMoveClicked = { showMoveDialog = true },
+                        onWithdrawClicked = { showWithdrawDialog = true },
                         onSellClicked = onSell,
                         onBuyClicked = onBuy,
                         contentPadding = innerPadding
@@ -133,6 +135,17 @@ fun PocketDetailView(
                         }
                     )
                 }
+
+                // Withdraw dialog
+                if (showWithdrawDialog && pocket != null) {
+                    WithdrawDialog(
+                        pocket = pocket!!,
+                        onDismiss = { showWithdrawDialog = false },
+                        onWithdrawSuspend = { amount ->
+                            viewModel.withdrawMoneySuspend(amount)
+                        }
+                    )
+                }
             }
         }
     }
@@ -143,6 +156,7 @@ private fun PocketDetailContent(
     pocket: PocketModel,
     transactions: List<PocketTransactionModel>, // Use PocketTransactionModel
     onMoveClicked: () -> Unit,
+    onWithdrawClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onBuyClicked: () -> Unit,
     contentPadding: PaddingValues = PaddingValues()
@@ -269,19 +283,19 @@ private fun PocketDetailContent(
                         }
                     }
                 } else if (isMain) {
-                    // For main pockets, show Withdraw and Move Money side by side
+                    // For main pockets, show Withdraw and Move Money side by side with the same color scheme as inactive investments
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Withdraw button (left)
+                        // Withdraw button (left, surfaceVariant)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable { /* TODO: Withdraw logic */ }
+                                .clickable { onWithdrawClicked() }
                                 .padding(horizontal = 8.dp, vertical = 10.dp)
                         ) {
                             Row(
@@ -294,7 +308,7 @@ private fun PocketDetailContent(
                                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             }
                         }
-                        // Move Money button (right)
+                        // Move Money button (right, white)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -412,6 +426,24 @@ fun MoveMoneyDialog(
     var isProcessing by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
 
+    val maxAmountValue = maxAmount ?: 0L
+
+    // Generate dynamic quick amounts based on available balance
+    val quickAmounts = when {
+        maxAmountValue >= 500000L -> listOf(50000L, 100000L, 200000L, 500000L)
+        maxAmountValue >= 200000L -> listOf(20000L, 50000L, 100000L, 200000L)
+        maxAmountValue >= 100000L -> listOf(10000L, 25000L, 50000L, 100000L)
+        maxAmountValue >= 50000L -> listOf(10000L, 20000L, 30000L, 50000L)
+        maxAmountValue >= 20000L -> listOf(5000L, 10000L, 15000L, 20000L)
+        maxAmountValue > 0L -> listOf(
+            (maxAmountValue * 0.25).toLong(),
+            (maxAmountValue * 0.5).toLong(),
+            (maxAmountValue * 0.75).toLong(),
+            maxAmountValue
+        )
+        else -> emptyList()
+    }
+
     // helper to parse amount
     fun parsedAmount(): Long {
         return amountText.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
@@ -466,17 +498,61 @@ fun MoveMoneyDialog(
         title = { Text("Move Money") },
         text = {
             Column {
+                // Amount input field
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
                     label = { Text("Amount") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = exceedsMax
                 )
                 if (maxAmount != null) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(text = "Available: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Available: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
+
+                // Quick amount buttons
+                if (quickAmounts.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Quick amounts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickAmounts.forEach { quickAmount ->
+                            OutlinedButton(
+                                onClick = {
+                                    amountText = quickAmount.toString()
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = when {
+                                        quickAmount >= 1000000L -> "${quickAmount / 1000000}M"
+                                        quickAmount >= 1000L -> "${quickAmount / 1000}K"
+                                        else -> "$quickAmount"
+                                    },
+                                    fontSize = 10.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Target pocket selector
                 Spacer(modifier = Modifier.height(12.dp))
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -488,7 +564,7 @@ fun MoveMoneyDialog(
                         onValueChange = {},
                         label = { Text("Target Pocket") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -505,9 +581,180 @@ fun MoveMoneyDialog(
                         }
                     }
                 }
+
+                // Error message
                 if (localError != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = localError ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WithdrawDialog(
+    pocket: PocketModel,
+    onDismiss: () -> Unit,
+    onWithdrawSuspend: suspend (amount: Long) -> Boolean
+) {
+    var amountText by remember { mutableStateOf("") }
+    var sliderValue by remember { mutableStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    var isProcessing by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    val maxAmount = pocket.total
+
+    // Generate dynamic quick amounts based on available balance
+    val quickAmounts = when {
+        maxAmount >= 500000L -> listOf(50000L, 100000L, 200000L, 500000L)
+        maxAmount >= 200000L -> listOf(20000L, 50000L, 100000L, 200000L)
+        maxAmount >= 100000L -> listOf(10000L, 25000L, 50000L, 100000L)
+        maxAmount >= 50000L -> listOf(10000L, 20000L, 30000L, 50000L)
+        maxAmount >= 20000L -> listOf(5000L, 10000L, 15000L, 20000L)
+        else -> listOf(
+            (maxAmount * 0.25).toLong(),
+            (maxAmount * 0.5).toLong(),
+            (maxAmount * 0.75).toLong(),
+            maxAmount
+        )
+    }
+
+    // Helper to parse amount
+    fun parsedAmount(): Long {
+        return amountText.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
+    }
+
+    // Update slider when text changes
+    LaunchedEffect(amountText) {
+        val amount = parsedAmount()
+        if (maxAmount > 0) {
+            sliderValue = (amount.toFloat() / maxAmount.toFloat()).coerceIn(0f, 1f)
+        }
+    }
+
+    val amount = parsedAmount()
+    val exceedsMax = amount > maxAmount
+    val isConfirmEnabled = !isProcessing && amount > 0L && !exceedsMax
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    localError = null
+                    if (amount <= 0L) {
+                        localError = "Enter a valid amount"
+                        return@TextButton
+                    }
+                    if (exceedsMax) {
+                        localError = "Amount exceeds available balance"
+                        return@TextButton
+                    }
+
+                    coroutineScope.launch {
+                        isProcessing = true
+                        val success = try {
+                            onWithdrawSuspend(amount)
+                        } catch (e: Exception) {
+                            false
+                        }
+                        isProcessing = false
+                        if (success) {
+                            onDismiss()
+                        }
+                    }
+                },
+                enabled = isConfirmEnabled
+            ) {
+                if (isProcessing) CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                else Text("Withdraw")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        title = { Text("Withdraw Money") },
+        text = {
+            Column {
+                // Amount input field
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = exceedsMax
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Available: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                // Slider
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Slide to adjust amount",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { newValue ->
+                        sliderValue = newValue
+                        val newAmount = (newValue * maxAmount).toLong()
+                        amountText = newAmount.toString()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Quick amount buttons
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Quick amounts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    quickAmounts.forEach { quickAmount ->
+                        OutlinedButton(
+                            onClick = {
+                                amountText = quickAmount.toString()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = when {
+                                    quickAmount >= 1000000L -> "${quickAmount / 1000000}M"
+                                    quickAmount >= 1000L -> "${quickAmount / 1000}K"
+                                    else -> "$quickAmount"
+                                },
+                                fontSize = 10.sp,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // Error message
+                if (localError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = localError ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
