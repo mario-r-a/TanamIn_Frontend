@@ -9,6 +9,7 @@ import com.mario.tanamin.data.dto.DataPocketUpdate
 import com.mario.tanamin.data.dto.DataTransactionResponse
 import com.mario.tanamin.data.repository.TanamInRepository
 import com.mario.tanamin.ui.model.PocketModel
+import com.mario.tanamin.ui.model.PocketTransactionModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -320,6 +321,104 @@ class PocketDetailViewModel(
     }
 
     /**
+     * Buy investment by creating a transaction with action "Buy".
+     * Validates that user has enough balance in the pocket.
+     */
+    suspend fun buyInvestmentSuspend(name: String, nominal: Long, pricePerUnit: Long, unitAmount: Long): Boolean {
+        val pocket = _pocket.value
+        if (pocket == null) {
+            _messageFlow.emit("Pocket not loaded")
+            return false
+        }
+        if (nominal <= 0L) {
+            _messageFlow.emit("Amount must be greater than zero")
+            return false
+        }
+        if (pocket.total < nominal) {
+            _messageFlow.emit("Insufficient balance in pocket")
+            return false
+        }
+
+        _isLoading.value = true
+        try {
+            // Find active investment pocket
+            val userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull()
+            val pocketsResult = if (userId != null) repository.getPocketsByUser(userId) else Result.success(emptyList())
+            if (pocketsResult.isFailure) {
+                _messageFlow.emit("Failed to find active investment pocket")
+                return false
+            }
+            val pockets = pocketsResult.getOrNull() ?: emptyList()
+            val activeInvestmentPocket = pockets.firstOrNull { it.walletType.contains("invest", true) && it.isActive && it.id != pocket.id }
+            if (activeInvestmentPocket == null) {
+                _messageFlow.emit("Active investment pocket not found")
+                return false
+            }
+
+            // Deduct from inactive investment pocket
+            val updatedInactiveDto = DataPocketUpdate(
+                id = pocket.id,
+                isActive = pocket.isActive,
+                name = pocket.name,
+                total = (pocket.total - nominal).toInt(),
+                userId = userId ?: 0,
+                walletType = pocket.walletType
+            )
+            val resInactive = repository.updatePocket(updatedInactiveDto)
+            if (resInactive.isFailure) {
+                _messageFlow.emit("Failed to deduct from inactive investment pocket: ${resInactive.exceptionOrNull()?.message}")
+                return false
+            }
+            _pocket.value = resInactive.getOrNull()!!
+
+            // Add to active investment pocket
+            val updatedActiveDto = DataPocketUpdate(
+                id = activeInvestmentPocket.id,
+                isActive = activeInvestmentPocket.isActive,
+                name = activeInvestmentPocket.name,
+                total = (activeInvestmentPocket.total + nominal).toInt(),
+                userId = userId ?: 0,
+                walletType = activeInvestmentPocket.walletType
+            )
+            val resActive = repository.updatePocket(updatedActiveDto)
+            if (resActive.isFailure) {
+                _messageFlow.emit("Failed to add to active investment pocket: ${resActive.exceptionOrNull()?.message}")
+                return false
+            }
+
+            // Record Buy transaction (simulate transfer)
+            val buyTransaction = AddTransactionRequest(
+                action = "Buy",
+                name = name,
+                nominal = nominal.toInt(),
+                pocketId = pocket.id,
+                pricePerUnit = pricePerUnit.toInt(),
+                toPocketId = activeInvestmentPocket.id,
+                unitAmount = unitAmount.toInt()
+            )
+            val result = repository.addTransaction(buyTransaction)
+            result.onFailure { ex ->
+                _messageFlow.emit("Failed to buy investment: ${ex.message}")
+                return false
+            }
+
+            _messageFlow.emit("Investment '$name' purchased successfully!")
+
+            // Reload transactions for this pocket to update the list immediately
+            loadTransactions(pocket.id)
+            // Also reload active investment pocket transactions
+            loadTransactions(activeInvestmentPocket.id)
+
+            return true
+        } catch (e: Exception) {
+            _messageFlow.emit("Buy investment failed: ${e.message}")
+            return false
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    /**
      * Loads transactions for the given pocketId and updates state.
      * Enriches transaction data for UI display, especially for transfer transactions.
      */
@@ -367,6 +466,17 @@ class PocketDetailViewModel(
                                 otherPocketName = pocketMap[tx.pocketId]?.name
                             )
                         }
+                        // Show stock name for Buy/Sell
+                        (tx.action == "Buy" || tx.action == "Sell") -> {
+                            PocketTransactionModel(
+                                id = tx.id,
+                                action = tx.action,
+                                type = tx.action,
+                                amount = tx.nominal,
+                                date = tx.date,
+                                otherPocketName = tx.name // Show stock name
+                            )
+                        }
                         else -> {
                             PocketTransactionModel(
                                 id = tx.id,
@@ -379,7 +489,6 @@ class PocketDetailViewModel(
                         }
                     }
                 }
-                // For legacy compatibility, set _transactions to empty or map as needed
                 _transactions.value = emptyList()
                 _uiTransactions.value = uiTxs
             } catch (e: Exception) {
@@ -399,16 +508,3 @@ class PocketDetailViewModel(
         _availableTargets.value = emptyList()
     }
 }
-
-/**
- * Data class representing a transaction in the PocketDetail UI.
- * Includes additional fields for transfer transactions.
- */
-data class PocketTransactionModel(
-    val id: Int,
-    val action: String,
-    val type: String, // Deposit, Transfer From, Transfer To, etc.
-    val amount: Int,
-    val date: String,
-    val otherPocketName: String? // For transfers, the other pocket's name
-)
