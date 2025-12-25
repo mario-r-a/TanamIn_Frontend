@@ -238,6 +238,22 @@ class WalletViewModel(
                 return false
             }
 
+            // Add transaction for main pocket
+            val mainTransaction = com.mario.tanamin.data.dto.AddTransactionRequest(
+                action = "Deposit",
+                name = "Deposit",
+                nominal = toMain.toInt(),
+                pocketId = mainPocket.id,
+                pricePerUnit = 1,
+                toPocketId = null,
+                unitAmount = toMain.toInt()
+            )
+            val mainTransResult = repository.addTransaction(mainTransaction)
+            mainTransResult.onFailure { ex ->
+                _messageFlow.emit("Failed to add transaction for Main pocket: ${ex.message}")
+                return false
+            }
+
             // Update inactive investments pocket
             val updatedInvestmentDto = DataPocketUpdate(
                 id = inactiveInvestmentsPocket.id,
@@ -251,6 +267,22 @@ class WalletViewModel(
             val investmentResult = repository.updatePocket(updatedInvestmentDto)
             investmentResult.onFailure { ex ->
                 _messageFlow.emit("Failed to update Inactive Investments pocket: ${ex.message}")
+                return false
+            }
+
+            // Add transaction for inactive investments pocket
+            val investmentTransaction = com.mario.tanamin.data.dto.AddTransactionRequest(
+                action = "Deposit",
+                name = "Deposit",
+                nominal = toInvestment.toInt(),
+                pocketId = inactiveInvestmentsPocket.id,
+                pricePerUnit = 1,
+                toPocketId = null,
+                unitAmount = toInvestment.toInt()
+            )
+            val investTransResult = repository.addTransaction(investmentTransaction)
+            investTransResult.onFailure { ex ->
+                _messageFlow.emit("Failed to add transaction for Inactive Investments pocket: ${ex.message}")
                 return false
             }
 
