@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,16 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.mario.tanamin.data.dto.DataTransactionResponse
 import com.mario.tanamin.ui.viewmodel.PocketDetailViewModel
+import com.mario.tanamin.ui.viewmodel.PocketTransactionModel
 import com.mario.tanamin.ui.model.PocketModel
 import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.ZonedDateTime
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
@@ -49,7 +47,7 @@ fun PocketDetailView(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableTargets by viewModel.availableTargets.collectAsState()
-    val transactions by viewModel.transactions.collectAsState()
+    val uiTransactions by viewModel.uiTransactions.collectAsState() // Use uiTransactions
 
     val snackbarHostState = remember { SnackbarHostState() }
     // coroutineScope not needed here (snackbar uses LaunchedEffect)
@@ -115,7 +113,7 @@ fun PocketDetailView(
                 } else if (pocket != null) {
                     PocketDetailContent(
                         pocket = pocket!!,
-                        transactions = transactions,
+                        transactions = uiTransactions, // Pass uiTransactions
                         onMoveClicked = { showMoveDialog = true },
                         onSellClicked = onSell,
                         onBuyClicked = onBuy,
@@ -143,7 +141,7 @@ fun PocketDetailView(
 @Composable
 private fun PocketDetailContent(
     pocket: PocketModel,
-    transactions: List<DataTransactionResponse>, // Use correct type
+    transactions: List<PocketTransactionModel>, // Use PocketTransactionModel
     onMoveClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onBuyClicked: () -> Unit,
@@ -270,6 +268,52 @@ private fun PocketDetailContent(
                             }
                         }
                     }
+                } else if (isMain) {
+                    // For main pockets, show Withdraw and Move Money side by side
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Withdraw button (left)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { /* TODO: Withdraw logic */ }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Withdraw", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        // Move Money button (right)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White)
+                                .clickable { onMoveClicked() }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Move Money", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -341,10 +385,10 @@ private fun PocketDetailContent(
                 items(transactions.size) { index ->
                     val transaction = transactions[index]
                     TransactionHistoryItem(
-                        description = transaction.action,
+                        description = transaction.type + (transaction.otherPocketName?.let { " ($it)" } ?: ""),
                         date = formatTransactionDate(transaction.date),
-                        amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(transaction.nominal),
-                        label = transaction.name
+                        amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(transaction.amount),
+                        label = transaction.action
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -534,16 +578,10 @@ fun TransactionHistoryItem(
 
 // Helper to format date string to a user-friendly format
 private fun formatTransactionDate(dateString: String): String {
-    // Try parsing as ISO 8601 with or without zone
     return try {
-        val zoned = ZonedDateTime.parse(dateString)
-        zoned.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"))
+        val odt = OffsetDateTime.parse(dateString)
+        odt.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"))
     } catch (e: DateTimeParseException) {
-        try {
-            val local = LocalDateTime.parse(dateString)
-            local.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"))
-        } catch (e: Exception) {
-            dateString // fallback to original
-        }
+        dateString // fallback to original if parsing fails
     }
 }

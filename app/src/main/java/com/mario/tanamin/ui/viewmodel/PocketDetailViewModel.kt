@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mario.tanamin.data.container.TanamInContainer
+import com.mario.tanamin.data.dto.AddTransactionRequest
 import com.mario.tanamin.data.dto.DataPocketUpdate
 import com.mario.tanamin.data.dto.DataTransactionResponse
 import com.mario.tanamin.data.repository.TanamInRepository
@@ -41,9 +42,9 @@ class PocketDetailViewModel(
     private val _transactions = MutableStateFlow<List<DataTransactionResponse>>(emptyList())
     val transactions: StateFlow<List<DataTransactionResponse>> = _transactions.asStateFlow()
 
-    // TODO: Add transactions list state when backend is ready
-    // private val _transactions = MutableStateFlow<List<TransactionModel>>(emptyList())
-    // val transactions: StateFlow<List<TransactionModel>> = _transactions.asStateFlow()
+    // UI Transactions state for this pocket, enriched with transfer details
+    private val _uiTransactions = MutableStateFlow<List<PocketTransactionModel>>(emptyList())
+    val uiTransactions: StateFlow<List<PocketTransactionModel>> = _uiTransactions.asStateFlow()
 
     /**
      * Load a specific pocket by ID and populate available targets.
@@ -183,6 +184,22 @@ class PocketDetailViewModel(
             val newTargets = _availableTargets.value.map { if (it.id == updatedTo.id) updatedTo else it }
             _availableTargets.value = newTargets
 
+            // Create transaction for the transfer
+            val transferTransaction = AddTransactionRequest(
+                action = "Transfer",
+                name = "Pocket Transfer",
+                nominal = amount.toInt(),
+                pocketId = from.id,
+                pricePerUnit = 1,
+                toPocketId = toPocketId,
+                unitAmount = amount.toInt()
+            )
+            val transferResult = repository.addTransaction(transferTransaction)
+            transferResult.onFailure { ex ->
+                _messageFlow.emit("Money moved but failed to record transaction: ${ex.message}")
+                return false
+            }
+
             // Reload the current pocket from server to ensure we have the authoritative state
             // (in case server modified other fields or we want to be certain of the final total)
             val currentPocketId = from.id
@@ -203,6 +220,10 @@ class PocketDetailViewModel(
             }
 
             _messageFlow.emit("Moved Rp$amount successfully")
+
+            // Reload transactions for this pocket to update the list immediately
+            loadTransactions(currentPocketId)
+
             return true
         } catch (e: Exception) {
             _messageFlow.emit("Transfer failed: ${e.message}")
@@ -214,22 +235,71 @@ class PocketDetailViewModel(
 
     /**
      * Loads transactions for the given pocketId and updates state.
+     * Enriches transaction data for UI display, especially for transfer transactions.
      */
     fun loadTransactions(pocketId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                val result = repository.getTransactionsByPocket(pocketId)
-                result.onSuccess { txs ->
-                    _transactions.value = txs
-                }.onFailure { ex ->
-                    _error.value = ex.message ?: "Failed to load transactions"
+                val historyResult = repository.getPocketHistory(pocketId)
+                val userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull()
+                val pocketsResult = if (userId != null) repository.getPocketsByUser(userId) else Result.success(emptyList())
+                if (historyResult.isFailure || pocketsResult.isFailure) {
+                    _error.value = historyResult.exceptionOrNull()?.message ?: pocketsResult.exceptionOrNull()?.message ?: "Failed to load transactions"
                     _transactions.value = emptyList()
+                    _uiTransactions.value = emptyList()
+                    _isLoading.value = false
+                    return@launch
                 }
+                val txs = historyResult.getOrNull() ?: emptyList()
+                Log.d("PocketDetailViewModel", "Fetched ${txs.size} transactions from pocket history for pocketId=$pocketId")
+                val pockets = pocketsResult.getOrNull() ?: emptyList()
+                val pocketMap = pockets.associateBy { it.id }
+
+                val uiTxs = txs.map { tx ->
+                    when {
+                        // When this pocket is the sender, show 'Transfer To'
+                        tx.action == "Transfer" && tx.pocketId == pocketId -> {
+                            PocketTransactionModel(
+                                id = tx.id,
+                                action = tx.action,
+                                type = "Transfer To",
+                                amount = tx.nominal,
+                                date = tx.date,
+                                otherPocketName = pocketMap[tx.toPocketId]?.name
+                            )
+                        }
+                        // When this pocket is the receiver, show 'Transfer From'
+                        tx.action == "Transfer" && tx.toPocketId == pocketId -> {
+                            PocketTransactionModel(
+                                id = tx.id,
+                                action = tx.action,
+                                type = "Transfer From",
+                                amount = tx.nominal,
+                                date = tx.date,
+                                otherPocketName = pocketMap[tx.pocketId]?.name
+                            )
+                        }
+                        else -> {
+                            PocketTransactionModel(
+                                id = tx.id,
+                                action = tx.action,
+                                type = tx.action,
+                                amount = tx.nominal,
+                                date = tx.date,
+                                otherPocketName = null
+                            )
+                        }
+                    }
+                }
+                // For legacy compatibility, set _transactions to empty or map as needed
+                _transactions.value = emptyList()
+                _uiTransactions.value = uiTxs
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to load transactions"
                 _transactions.value = emptyList()
+                _uiTransactions.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -243,3 +313,17 @@ class PocketDetailViewModel(
         _availableTargets.value = emptyList()
     }
 }
+
+/**
+ * Data class representing a transaction in the PocketDetail UI.
+ * Includes additional fields for transfer transactions.
+ */
+data class PocketTransactionModel(
+    val id: Int,
+    val action: String,
+    val type: String, // Deposit, Transfer From, Transfer To, etc.
+    val amount: Int,
+    val date: String,
+    val otherPocketName: String? // For transfers, the other pocket's name
+)
+

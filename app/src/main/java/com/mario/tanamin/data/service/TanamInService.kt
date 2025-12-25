@@ -67,6 +67,16 @@ interface TanamInService {
         @Path("pocketId") pocketId: Int
     ): Response<TransactionsResponse>
 
+    @POST("/api/transactions/")
+    suspend fun addTransaction(
+        @Body request: com.mario.tanamin.data.dto.AddTransactionRequest
+    ): Response<com.mario.tanamin.data.dto.DataTransactionResponse>
+
+    @GET("/api/pockets/{pocketId}/history")
+    suspend fun getPocketHistory(
+        @Path("pocketId") pocketId: Int
+    ): Response<com.mario.tanamin.data.dto.PocketHistoryResponse>
+
     @GET("/api/themes")
     suspend fun getThemes(): Response<ThemeListResponse>
 

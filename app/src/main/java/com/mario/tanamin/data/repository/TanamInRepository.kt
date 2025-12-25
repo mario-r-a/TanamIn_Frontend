@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import retrofit2.Response
 import com.mario.tanamin.data.dto.TransactionsResponse
 import com.mario.tanamin.data.dto.DataTransactionResponse
+import com.mario.tanamin.data.dto.AddTransactionRequest
+import com.mario.tanamin.data.dto.DataPocketHistoryResponse
 
 class TanamInRepository(private val tanamInService: TanamInService) {
 
@@ -320,6 +322,38 @@ class TanamInRepository(private val tanamInService: TanamInService) {
                 return Result.failure(Exception("Empty response body"))
             }
             Result.success(body.`data`)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addTransaction(request: AddTransactionRequest): Result<DataTransactionResponse> {
+        return try {
+            val response = tanamInService.addTransaction(request)
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPocketHistory(pocketId: Int): Result<List<DataPocketHistoryResponse>> {
+        return try {
+            val response = tanamInService.getPocketHistory(pocketId)
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+            val body = response.body()
+            if (body == null) {
+                return Result.failure(Exception("Empty response body"))
+            }
+            Result.success(body.data)
         } catch (e: Exception) {
             Result.failure(e)
         }
