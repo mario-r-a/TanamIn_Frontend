@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +28,7 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
+import com.mario.tanamin.ui.model.PocketTransactionModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +44,10 @@ fun PocketDetailView(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableTargets by viewModel.availableTargets.collectAsState()
+<<<<<<< Updated upstream
+=======
+    val uiTransactions by viewModel.uiTransactions.collectAsState() // Collect enriched transactions
+>>>>>>> Stashed changes
 
     val snackbarHostState = remember { SnackbarHostState() }
     // coroutineScope not needed here (snackbar uses LaunchedEffect)
@@ -108,6 +112,10 @@ fun PocketDetailView(
                 } else if (pocket != null) {
                     PocketDetailContent(
                         pocket = pocket!!,
+<<<<<<< Updated upstream
+=======
+                        transactions = uiTransactions, // Use enriched UI transactions
+>>>>>>> Stashed changes
                         onMoveClicked = { showMoveDialog = true },
                         onSellClicked = onSell,
                         onBuyClicked = onBuy,
@@ -135,6 +143,10 @@ fun PocketDetailView(
 @Composable
 private fun PocketDetailContent(
     pocket: PocketModel,
+<<<<<<< Updated upstream
+=======
+    transactions: List<PocketTransactionModel>,
+>>>>>>> Stashed changes
     onMoveClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onBuyClicked: () -> Unit,
@@ -145,12 +157,6 @@ private fun PocketDetailContent(
     // Decide button label and behaviour
     val walletType = pocket.walletType.trim()
     val pocketNameLower = pocket.name.lowercase(Locale.getDefault())
-    // Normalize name: remove non-alphanumeric, collapse spaces, lowercase for robust comparison
-    val normalizedName = pocket.name
-        .lowercase(Locale.getDefault())
-        .replace(Regex("[^a-z0-9\\s]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
 
     // Determine which button to show:
     // - Main => Move Money
@@ -189,8 +195,8 @@ private fun PocketDetailContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding() // respect the status bar, so the orange header visually starts under it
-                    .padding(horizontal = 16.dp), // add horizontal padding so header content (buttons) aren't flush to edge
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -261,6 +267,52 @@ private fun PocketDetailContent(
                             }
                         }
                     }
+                } else if (isMain) {
+                    // For main pockets, show Withdraw and Move Money side by side
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Withdraw button (left)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFFFFF7ED))
+                                .clickable { /* TODO: Withdraw logic */ }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Withdraw", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        // Move Money button (right)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White)
+                                .clickable { onMoveClicked() }
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("Move Money", color = Color(0xFF222B45), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF222B45), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -319,6 +371,7 @@ private fun PocketDetailContent(
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
+<<<<<<< Updated upstream
             // TODO: Replace with actual transactions from ViewModel
             items(4) { _ ->
                 TransactionHistoryItem(
@@ -328,6 +381,28 @@ private fun PocketDetailContent(
                     label = "Buy"
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+=======
+            if (transactions.isEmpty()) {
+                item {
+                    Text(
+                        text = "No transactions found.",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 24.dp)
+                    )
+                }
+            } else {
+                items(transactions.size) { index ->
+                    val transaction = transactions[index]
+                    TransactionHistoryItem(
+                        description = transaction.type + (transaction.otherPocketName?.let { " (" + it + ")" } ?: ""),
+                        date = formatTransactionDate(transaction.date),
+                        amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(transaction.amount),
+                        label = transaction.action
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+>>>>>>> Stashed changes
             }
         }
     }

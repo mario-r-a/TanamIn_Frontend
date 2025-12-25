@@ -1,6 +1,14 @@
 package com.mario.tanamin.data.service
 
+<<<<<<< Updated upstream
 import com.mario.tanamin.data.dto.DataPocketUpdate
+=======
+import com.mario.tanamin.data.dto.AddTransactionRequest
+import com.mario.tanamin.data.dto.CourseCompletionRequest
+import com.mario.tanamin.data.dto.DataPocketUpdate
+import com.mario.tanamin.data.dto.DataTransactionResponse
+import com.mario.tanamin.data.dto.LevelResponse
+>>>>>>> Stashed changes
 import com.mario.tanamin.data.dto.LoginRequest
 import com.mario.tanamin.data.dto.LoginResponse
 import com.mario.tanamin.data.dto.PocketResponse
@@ -32,4 +40,41 @@ interface TanamInService {
     
     @GET("api/profile")
     suspend fun getProfile(): Response<ProfileResponse>
+<<<<<<< Updated upstream
+=======
+
+    @GET("api/levels")
+    suspend fun getLevelsByUser(): Response<LevelResponse>
+
+    @GET("api/questions/level/{levelId}")
+    suspend fun getQuestionsByLevel(
+        @Path("levelId") levelId: Int
+    ): Response<QuestionResponse>
+
+    @POST("/api/profile/course-complete")
+    suspend fun handleCourseCompletion(
+        @Body request: CourseCompletionRequest
+    ): Response<ProfileResponse>
+
+    @PATCH("/api/levels/{levelId}")
+    suspend fun updateLevel(
+        @Path("levelId") levelId: Int,
+        @Body request: UpdateLevelRequest
+    ): Response<UpdateLevelResponse>
+
+    @GET("/api/transactions/pocket/{pocketId}")
+    suspend fun getTransactionsByPocket(
+        @Path("pocketId") pocketId: Int
+    ): Response<TransactionsResponse>
+
+    @POST("/api/transactions/")
+    suspend fun addTransaction(
+        @Body request: AddTransactionRequest
+    ): Response<DataTransactionResponse>
+
+    @GET("/api/pockets/{pocketId}/history")
+    suspend fun getPocketHistory(
+        @Path("pocketId") pocketId: Int
+    ): Response<com.mario.tanamin.data.dto.PocketHistoryResponse>
+>>>>>>> Stashed changes
 }
