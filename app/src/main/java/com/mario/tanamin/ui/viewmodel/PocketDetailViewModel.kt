@@ -419,6 +419,141 @@ class PocketDetailViewModel(
     }
 
     /**
+     * Sell investment from active investment pocket.
+     * Creates two transactions:
+     * 1. Sell transaction in active investment (at original buy cost)
+     * 2. Deposit transaction in inactive investment (at sell price)
+     */
+    suspend fun sellInvestmentSuspend(
+        investmentName: String,
+        sellPrice: Long,
+        unitAmount: Long,
+        originalBuyCost: Long
+    ): Boolean {
+        val pocket = _pocket.value
+        if (pocket == null) {
+            _messageFlow.emit("Pocket not loaded")
+            return false
+        }
+        if (sellPrice <= 0L || unitAmount <= 0L) {
+            _messageFlow.emit("Price and units must be greater than zero")
+            return false
+        }
+
+        _isLoading.value = true
+        try {
+            val userId = com.mario.tanamin.data.session.InMemorySessionHolder.userId?.toIntOrNull()
+
+            // Find inactive investment pocket
+            val pocketsResult = if (userId != null) repository.getPocketsByUser(userId) else Result.success(emptyList())
+            if (pocketsResult.isFailure) {
+                _messageFlow.emit("Failed to find inactive investment pocket")
+                return false
+            }
+            val pockets = pocketsResult.getOrNull() ?: emptyList()
+            val inactiveInvestmentPocket = pockets.firstOrNull {
+                it.walletType.contains("invest", true) &&
+                it.name.contains("inactive", true)
+            }
+            if (inactiveInvestmentPocket == null) {
+                _messageFlow.emit("Inactive investment pocket not found")
+                return false
+            }
+
+            // Calculate total sell value
+            val totalSellValue = sellPrice * unitAmount
+
+            // Deduct from active investment pocket (using original buy cost)
+            val updatedActiveDto = DataPocketUpdate(
+                id = pocket.id,
+                isActive = pocket.isActive,
+                name = pocket.name,
+                total = (pocket.total - originalBuyCost).toInt(),
+                userId = userId ?: 0,
+                walletType = pocket.walletType
+            )
+            val resActive = repository.updatePocket(updatedActiveDto)
+            if (resActive.isFailure) {
+                _messageFlow.emit("Failed to deduct from active investment pocket: ${resActive.exceptionOrNull()?.message}")
+                return false
+            }
+            _pocket.value = resActive.getOrNull()!!
+
+            // Add to inactive investment pocket (using sell price)
+            val updatedInactiveDto = DataPocketUpdate(
+                id = inactiveInvestmentPocket.id,
+                isActive = inactiveInvestmentPocket.isActive,
+                name = inactiveInvestmentPocket.name,
+                total = (inactiveInvestmentPocket.total + totalSellValue).toInt(),
+                userId = userId ?: 0,
+                walletType = inactiveInvestmentPocket.walletType
+            )
+            val resInactive = repository.updatePocket(updatedInactiveDto)
+            if (resInactive.isFailure) {
+                _messageFlow.emit("Failed to add to inactive investment pocket: ${resInactive.exceptionOrNull()?.message}")
+                return false
+            }
+
+            // Record Sell transaction in active investment pocket (at original buy cost)
+            val sellTransaction = AddTransactionRequest(
+                action = "Sell",
+                name = investmentName,
+                nominal = originalBuyCost.toInt(),
+                pocketId = pocket.id,
+                pricePerUnit = (originalBuyCost / unitAmount).toInt(),
+                toPocketId = inactiveInvestmentPocket.id,
+                unitAmount = unitAmount.toInt()
+            )
+            val resultSell = repository.addTransaction(sellTransaction)
+            resultSell.onFailure { ex ->
+                _messageFlow.emit("Failed to record sell transaction: ${ex.message}")
+                return false
+            }
+
+            // Record Deposit transaction in inactive investment pocket (at sell price)
+            val depositTransaction = AddTransactionRequest(
+                action = "Deposit",
+                name = investmentName,
+                nominal = totalSellValue.toInt(),
+                pocketId = inactiveInvestmentPocket.id,
+                pricePerUnit = sellPrice.toInt(),
+                toPocketId = null,
+                unitAmount = unitAmount.toInt()
+            )
+            val resultDeposit = repository.addTransaction(depositTransaction)
+            resultDeposit.onFailure { ex ->
+                _messageFlow.emit("Failed to record deposit transaction: ${ex.message}")
+                return false
+            }
+
+            _messageFlow.emit("Investment '$investmentName' sold successfully!")
+
+            // Reload the current pocket from server to ensure we have the updated state
+            val currentPocketId = pocket.id
+            if (userId != null) {
+                repository.getPocketsByUser(userId)
+                    .onSuccess { pockets ->
+                        val refreshedPocket = pockets.firstOrNull { it.id == currentPocketId }
+                        if (refreshedPocket != null) {
+                            _pocket.value = refreshedPocket
+                        }
+                    }
+            }
+
+            // Reload transactions for both pockets
+            loadTransactions(pocket.id)
+            loadTransactions(inactiveInvestmentPocket.id)
+
+            return true
+        } catch (e: Exception) {
+            _messageFlow.emit("Sell investment failed: ${e.message}")
+            return false
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    /**
      * Loads transactions for the given pocketId and updates state.
      * Enriches transaction data for UI display, especially for transfer transactions.
      */

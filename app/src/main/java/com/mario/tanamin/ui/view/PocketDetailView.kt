@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,8 +51,8 @@ fun PocketDetailView(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val availableTargets by viewModel.availableTargets.collectAsState()
-    val uiTransactions by viewModel.uiTransactions.collectAsState() // Use uiTransactions
-    val allTransactions by viewModel.transactions.collectAsState() // Collect the original transaction list
+    val allTransactions by viewModel.transactions.collectAsState()
+    val uiTransactions by viewModel.uiTransactions.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     // coroutineScope not needed here (snackbar uses LaunchedEffect)
@@ -65,6 +67,7 @@ fun PocketDetailView(
     var showMoveDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
     var showBuyDialog by remember { mutableStateOf(false) }
+    var showSellDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(pocketId) {
         viewModel.loadPocket(pocketId)
@@ -122,7 +125,7 @@ fun PocketDetailView(
                         allTransactions = allTransactions, // Pass original transaction list
                         onMoveClicked = { showMoveDialog = true },
                         onWithdrawClicked = { showWithdrawDialog = true },
-                        onSellClicked = onSell,
+                        onSellClicked = { showSellDialog = true },
                         onBuyClicked = { showBuyDialog = true },
                         contentPadding = innerPadding
                     )
@@ -159,6 +162,18 @@ fun PocketDetailView(
                         onDismiss = { showBuyDialog = false },
                         onBuySuspend = { name, nominal, pricePerUnit, unitAmount ->
                             viewModel.buyInvestmentSuspend(name, nominal, pricePerUnit, unitAmount)
+                        }
+                    )
+                }
+
+                // Sell Investment dialog
+                if (showSellDialog && pocket != null) {
+                    SellInvestmentDialog(
+                        pocket = pocket!!,
+                        allTransactions = allTransactions,
+                        onDismiss = { showSellDialog = false },
+                        onSellSuspend = { investmentName, sellPrice, unitAmount, originalBuyCost ->
+                            viewModel.sellInvestmentSuspend(investmentName, sellPrice, unitAmount, originalBuyCost)
                         }
                     )
                 }
@@ -957,8 +972,8 @@ fun BuyInvestmentDialog(
     onBuySuspend: suspend (name: String, nominal: Long, pricePerUnit: Long, unitAmount: Long) -> Boolean
 ) {
     var investmentName by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf("") }
     var pricePerUnitText by remember { mutableStateOf("") }
+    var unitAmountText by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     var isProcessing by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
@@ -970,11 +985,11 @@ fun BuyInvestmentDialog(
         return text.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
     }
 
-    val amount = parsedAmount(amountText)
     val pricePerUnit = parsedAmount(pricePerUnitText)
-    val unitAmount = if (pricePerUnit > 0) amount / pricePerUnit else 0L
-    val exceedsMax = amount > maxAmount
-    val isConfirmEnabled = !isProcessing && investmentName.isNotBlank() && amount > 0L && pricePerUnit > 0L && !exceedsMax
+    val unitAmount = parsedAmount(unitAmountText)
+    val totalAmount = pricePerUnit * unitAmount
+    val exceedsMaxAmount = totalAmount > maxAmount
+    val isConfirmEnabled = !isProcessing && investmentName.isNotBlank() && pricePerUnit > 0L && unitAmount > 0L && !exceedsMaxAmount
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -986,23 +1001,23 @@ fun BuyInvestmentDialog(
                         localError = "Please enter an investment name"
                         return@TextButton
                     }
-                    if (amount <= 0L) {
-                        localError = "Please enter a valid amount"
-                        return@TextButton
-                    }
                     if (pricePerUnit <= 0L) {
                         localError = "Please enter a valid price per unit"
                         return@TextButton
                     }
-                    if (exceedsMax) {
-                        localError = "Amount exceeds available balance"
+                    if (unitAmount <= 0L) {
+                        localError = "Please enter a valid unit amount"
+                        return@TextButton
+                    }
+                    if (exceedsMaxAmount) {
+                        localError = "Total amount exceeds available balance"
                         return@TextButton
                     }
 
                     coroutineScope.launch {
                         isProcessing = true
                         val success = try {
-                            onBuySuspend(investmentName, amount, pricePerUnit, unitAmount)
+                            onBuySuspend(investmentName, totalAmount, pricePerUnit, unitAmount)
                         } catch (e: Exception) {
                             localError = e.message
                             false
@@ -1024,7 +1039,10 @@ fun BuyInvestmentDialog(
         },
         title = { Text("Buy Investment") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 // Investment Name
                 OutlinedTextField(
                     value = investmentName,
@@ -1033,35 +1051,10 @@ fun BuyInvestmentDialog(
                         localError = null
                     },
                     label = { Text("Investment Name") },
-                    placeholder = { Text("e.g., Gold, Stocks, etc.") },
+                    placeholder = { Text("e.g., BBCA, Gold, etc.") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Amount input field
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = {
-                        amountText = it
-                        localError = null
-                    },
-                    label = { Text("Amount (Rp)") },
-                    placeholder = { Text("Total investment amount") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = exceedsMax
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Available: Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (exceedsMax) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 // Price per unit
                 OutlinedTextField(
@@ -1070,26 +1063,78 @@ fun BuyInvestmentDialog(
                         pricePerUnitText = it
                         localError = null
                     },
-                    label = { Text("Price per Unit (Rp)") },
-                    placeholder = { Text("Price of one unit") },
+                    label = { Text("Price per Unit") },
+                    placeholder = { Text("Enter price per unit") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    prefix = { Text("Rp ") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Show calculated units
-                if (amount > 0 && pricePerUnit > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Units: ${unitAmount}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
+                // Unit amount
+                OutlinedTextField(
+                    value = unitAmountText,
+                    onValueChange = {
+                        unitAmountText = it
+                        localError = null
+                    },
+                    label = { Text("Number of Units") },
+                    placeholder = { Text("Enter number of units") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Show calculated total and available balance
+                if (pricePerUnit > 0 && unitAmount > 0) {
+                    HorizontalDivider()
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Purchase Summary",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Total Amount:", fontSize = 13.sp)
+                            Text(
+                                text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(totalAmount)}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (exceedsMaxAmount) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Available Balance:", fontSize = 13.sp)
+                            Text(
+                                text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(maxAmount)}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (exceedsMaxAmount) {
+                            Text(
+                                text = "⚠ Insufficient balance",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
 
                 // Error message
                 if (localError != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = localError ?: "",
                         color = MaterialTheme.colorScheme.error,
@@ -1171,4 +1216,292 @@ private fun formatTransactionDate(dateString: String): String {
     } catch (e: DateTimeParseException) {
         dateString // fallback to original if parsing fails
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SellInvestmentDialog(
+    pocket: PocketModel,
+    allTransactions: List<DataTransactionResponse>,
+    onDismiss: () -> Unit,
+    onSellSuspend: suspend (investmentName: String, sellPrice: Long, unitAmount: Long, originalBuyCost: Long) -> Boolean
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var isProcessing by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    // Calculate available investments from transactions
+    val availableInvestments = remember(allTransactions, pocket.id) {
+        val investmentTransactions = allTransactions.filter {
+            it.action == "Buy" || it.action == "Sell"
+        }
+
+        val investmentMap = mutableMapOf<String, MutableList<DataTransactionResponse>>()
+        investmentTransactions.forEach { tx ->
+            val name = tx.name
+            investmentMap.getOrPut(name) { mutableListOf() }.add(tx)
+        }
+
+        investmentMap.mapNotNull { (investmentName, transactions) ->
+            var totalUnits = 0L
+            var totalCost = 0L
+            transactions.forEach { tx ->
+                when (tx.action) {
+                    "Buy" -> {
+                        totalUnits += tx.unitAmount
+                        totalCost += tx.nominal
+                    }
+                    "Sell" -> {
+                        totalUnits -= tx.unitAmount
+                        totalCost -= tx.nominal
+                    }
+                }
+            }
+            if (totalUnits > 0L) {
+                Triple(investmentName, totalUnits, totalCost)
+            } else {
+                null
+            }
+        }
+    }
+
+    var selectedInvestmentIndex by remember { mutableStateOf(0) }
+    var expanded by remember { mutableStateOf(false) }
+    var sellPriceText by remember { mutableStateOf("") }
+    var unitAmountText by remember { mutableStateOf("") }
+
+    val selectedInvestment = if (availableInvestments.isNotEmpty() && selectedInvestmentIndex < availableInvestments.size) {
+        availableInvestments[selectedInvestmentIndex]
+    } else null
+
+    fun parsedAmount(text: String): Long {
+        return text.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
+    }
+
+    val sellPrice = parsedAmount(sellPriceText)
+    val unitAmount = parsedAmount(unitAmountText)
+    val maxUnits = selectedInvestment?.second ?: 0L
+    val originalBuyCost = selectedInvestment?.third ?: 0L
+    val unitCost = if (maxUnits > 0L) originalBuyCost / maxUnits else 0L
+    val totalOriginalCost = unitCost * unitAmount
+
+    val exceedsMaxUnits = unitAmount > maxUnits
+    val isConfirmEnabled = !isProcessing && selectedInvestment != null && sellPrice > 0L && unitAmount > 0L && !exceedsMaxUnits
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    localError = null
+                    if (selectedInvestment == null) {
+                        localError = "Please select an investment"
+                        return@TextButton
+                    }
+                    if (sellPrice <= 0L) {
+                        localError = "Please enter a valid sell price per unit"
+                        return@TextButton
+                    }
+                    if (unitAmount <= 0L) {
+                        localError = "Please enter a valid unit amount"
+                        return@TextButton
+                    }
+                    if (exceedsMaxUnits) {
+                        localError = "Unit amount exceeds available units"
+                        return@TextButton
+                    }
+
+                    coroutineScope.launch {
+                        isProcessing = true
+                        val success = try {
+                            onSellSuspend(selectedInvestment.first, sellPrice, unitAmount, totalOriginalCost)
+                        } catch (e: Exception) {
+                            localError = e.message
+                            false
+                        }
+                        isProcessing = false
+                        if (success) {
+                            onDismiss()
+                        }
+                    }
+                },
+                enabled = isConfirmEnabled
+            ) {
+                if (isProcessing) CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                else Text("Sell")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        title = { Text("Sell Investment") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (availableInvestments.isEmpty()) {
+                    Text(
+                        text = "No active investments to sell",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    // Investment Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedInvestment?.first ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Select Investment") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            availableInvestments.forEachIndexed { index, (name, units, _) ->
+                                DropdownMenuItem(
+                                    text = { Text("$name ($units units)") },
+                                    onClick = {
+                                        selectedInvestmentIndex = index
+                                        expanded = false
+                                        localError = null
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Show available units
+                    if (selectedInvestment != null) {
+                        Text(
+                            text = "Available Units: ${selectedInvestment.second}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Sell Price Per Unit
+                    OutlinedTextField(
+                        value = sellPriceText,
+                        onValueChange = {
+                            sellPriceText = it
+                            localError = null
+                        },
+                        label = { Text("Sell Price Per Unit") },
+                        placeholder = { Text("Enter sell price") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        prefix = { Text("Rp ") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Unit Amount
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = unitAmountText,
+                            onValueChange = {
+                                unitAmountText = it
+                                localError = null
+                            },
+                            label = { Text("Units to Sell") },
+                            placeholder = { Text("Enter units") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            isError = exceedsMaxUnits
+                        )
+
+                        // Sell All button
+                        Button(
+                            onClick = {
+                                unitAmountText = maxUnits.toString()
+                                localError = null
+                            },
+                            enabled = maxUnits > 0L,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("All")
+                        }
+                    }
+
+                    // Preview
+                    if (sellPrice > 0L && unitAmount > 0L && !exceedsMaxUnits) {
+                        HorizontalDivider()
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Transaction Preview",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Total Sell Value:", fontSize = 13.sp)
+                                Text(
+                                    text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(sellPrice * unitAmount)}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF37c447)
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Original Cost:", fontSize = 13.sp)
+                                Text(
+                                    text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(totalOriginalCost)}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            val profit = (sellPrice * unitAmount) - totalOriginalCost
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Profit/Loss:", fontSize = 13.sp)
+                                Text(
+                                    text = "Rp${NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID")).format(profit)}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (profit >= 0) Color(0xFF37c447) else Color(0xFFE74C3C)
+                                )
+                            }
+                        }
+                    }
+
+                    // Error message
+                    if (localError != null) {
+                        Text(
+                            text = localError ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
