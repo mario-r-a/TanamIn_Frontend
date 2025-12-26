@@ -655,7 +655,16 @@ fun AddBalanceDialog(
                 if (!useProfilePercentage) {
                     OutlinedTextField(
                         value = customPercentageText,
-                        onValueChange = { customPercentageText = it },
+                        onValueChange = { input ->
+                            // Only allow numbers and limit to 3 digits
+                            val filtered = input.filter { it.isDigit() }.take(3)
+                            val intVal = filtered.toIntOrNull()
+                            // Only allow 0-100
+                            if (intVal == null || intVal in 0..100) {
+                                customPercentageText = filtered
+                                errorMessage = null
+                            }
+                        },
                         label = { Text("Percentage to Main Wallet") },
                         placeholder = { Text("Enter percentage (0-100)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
